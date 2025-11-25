@@ -1,0 +1,14 @@
+{
+    "name" : "Digital Tea Garden",
+    "appid" : "__UNI__DIGITAL_TEA_GARDEN",
+    "display" : "standalone",
+    "description" : "Tea garden management demo (uni-app)",
+    "versionName" : "0.1.0",
+    "versionCode" : "100",
+    "uni-app" : {
+        "compileVersion" : "3.8",
+        "control" : "uni-v3"
+    },
+    "vueVersion" : "3",
+    "locale" : "zh-Hans"
+}
