@@ -34,6 +34,7 @@
 cd backend
 python -m venv .venv
 .\.venv\Scripts\activate   # Windows
+conda activate D:/thingsboard_envor/tea/envs/tea
 pip install -r requirements.txt
 ```
 
