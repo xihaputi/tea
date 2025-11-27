@@ -23,7 +23,7 @@
         </el-table-column>
         <el-table-column prop="enabled" label="启用" width="100">
           <template #default="{row}">
-            <el-switch v-model="row.enabled" />
+            <el-switch v-model="row.enabled" @change="handleSwitchChange(row)" />
           </template>
         </el-table-column>
       </el-table>
@@ -66,12 +66,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getRuleList, enableRule } from '@/api/rule'
+import { ElMessage } from 'element-plus'
 
 const dialogVisible = ref(false)
 const actionList = ref([])
-const rules = ref([
-  { name: '严重缺水预警', condition: '土壤湿度 < 15% 持续10分钟', actions: ['系统告警', '短信通知负责人'], enabled: true },
-  { name: '夜间低温防冻', condition: '气温 < 2℃', actions: ['系统告警', '小程序推送'], enabled: true },
-])
+const rules = ref([])
+const loading = ref(false)
+
+const fetchRules = async () => {
+  loading.value = true
+  try {
+    const res = await getRuleList()
+    if (res) {
+      rules.value = res.list || []
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSwitchChange = async (row) => {
+  try {
+    await enableRule(row.id, row.enabled)
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    row.enabled = !row.enabled // 恢复状态
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  fetchRules()
+})
 </script>

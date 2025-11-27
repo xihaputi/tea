@@ -9,4 +9,15 @@ module.exports = defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  server: {
+    port: 3000,
+    open: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000', // 假设后端运行在 8080 端口
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  }
 })

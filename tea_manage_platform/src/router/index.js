@@ -8,6 +8,16 @@ const routes = [
     meta: { title: "登录" },
   },
   {
+    path: "/login/register",
+    component: () => import("@/views/login/register.vue"),
+    meta: { title: "注册账号" },
+  },
+  {
+    path: "/login/forget",
+    component: () => import("@/views/login/forget.vue"),
+    meta: { title: "找回密码" },
+  },
+  {
     path: "/",
     redirect: "/login",
   },
@@ -57,6 +67,17 @@ const routes = [
         path: "index",
         component: () => import("@/views/rule/index.vue"),
         meta: { title: "规则配置", requiresAuth: true },
+      },
+    ],
+  },
+  {
+    path: "/rule-engine",
+    component: Layout,
+    children: [
+      {
+        path: "index",
+        component: () => import("@/views/rule-engine/index.vue"),
+        meta: { title: "规则引擎", requiresAuth: true },
       },
     ],
   },

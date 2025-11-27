@@ -1,22 +1,34 @@
-<template>
-  <div>
-    <el-row :gutter="20">
-      <el-col :span="6" v-for="i in 4" :key="i">
-        <el-card shadow="never" class="modern-card hover-up">
-          <div class="stat-item">
-            <div class="icon-box">
-              <el-icon><DataLine /></el-icon>
-            </div>
-            <div>
-              <div class="text-gray-400 text-xs mb-1">鐩戞帶鎸囨爣 {{ i }}</div>
-              <div class="text-2xl font-bold">1,20{{ i }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-  </div>
-</template>
+<script setup>
+import { ref, onMounted } from 'vue'
+import { getStats } from '@/api/dashboard'
+
+const statsData = ref([
+  { label: '茶园总数', value: '-' },
+  { label: '设备总数', value: '-' },
+  { label: '今日告警', value: '-' },
+  { label: '设备在线率', value: '-' }
+])
+
+const fetchData = async () => {
+  try {
+    const res = await getStats()
+    if (res) {
+      statsData.value = [
+        { label: '茶园总数', value: res.gardenCount },
+        { label: '设备总数', value: res.deviceCount },
+        { label: '今日告警', value: res.alertCount },
+        { label: '设备在线率', value: res.onlineRate }
+      ]
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>
 
 <style scoped>
 .modern-card {

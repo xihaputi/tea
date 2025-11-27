@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from .routers import advice, chat, disease, plots, sensor, stats
+from app.routers import plots
+from .routers import advice, auth, chat, dashboard, disease, devices, gardens, rules, sensor, stats
+from .database import Base, engine
 
 
 def create_app() -> FastAPI:
@@ -17,6 +18,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ensure tables exist
+    Base.metadata.create_all(bind=engine)
+
+    app.include_router(auth.router)
+    app.include_router(dashboard.router)
+    app.include_router(gardens.router)
+    app.include_router(devices.router)
+    app.include_router(rules.router)
     app.include_router(plots.router)
     app.include_router(sensor.router)
     app.include_router(advice.router)
@@ -27,4 +36,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

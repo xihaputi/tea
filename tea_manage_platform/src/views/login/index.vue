@@ -28,14 +28,29 @@
           />
         </el-form-item>
 
+        <el-form-item>
+          <div class="flex items-center w-full gap-2">
+            <el-input
+              v-model="form.captchaCode"
+              placeholder="验证码"
+              prefix-icon="Key"
+              class="custom-input flex-1"
+            />
+            <div class="captcha-box" @click="refreshCaptcha">
+              <img v-if="captchaImg" :src="captchaImg" alt="验证码" />
+              <div v-else class="loading-text">加载中...</div>
+            </div>
+          </div>
+        </el-form-item>
+
         <el-button type="primary" class="login-btn" :loading="loading" @click="handleLogin">
           立即进入
           <el-icon class="ml-2"><ArrowRight /></el-icon>
         </el-button>
 
         <div class="footer-links">
-          <span>忘记密码</span>
-          <span>注册茶园</span>
+          <span @click="$router.push('/login/forget')">忘记密码</span>
+          <span @click="$router.push('/login/register')">注册茶园</span>
         </div>
       </el-form>
     </div>
@@ -43,29 +58,63 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { login, getCaptcha } from '@/api/auth'
 
 const router = useRouter()
 const loading = ref(false)
-const form = reactive({ username: '', password: '' })
+const captchaImg = ref('')
+const form = reactive({ 
+  username: '', 
+  password: '',
+  captchaCode: '',
+  captchaKey: ''
+})
 
-const handleLogin = () => {
+const refreshCaptcha = async () => {
+  try {
+    const res = await getCaptcha()
+    if (res) {
+      captchaImg.value = res.image
+      form.captchaKey = res.key
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const handleLogin = async () => {
   if (!form.username || !form.password) {
     return ElMessage.warning('请输入账号和密码')
   }
-  if (form.username !== 'admin' || form.password !== 'admin') {
-    return ElMessage.error('账号或密码错误，测试账号：admin/admin')
+  if (!form.captchaCode) {
+    return ElMessage.warning('请输入验证码')
   }
+  
   loading.value = true
-  setTimeout(() => {
-    localStorage.setItem('tea_token', 'mock-admin-token')
+  try {
+    const res = await login(form)
+    if (res && res.token) {
+      localStorage.setItem('tea_token', res.token)
+      ElMessage.success('欢迎回来')
+      router.push('/dashboard')
+    } else {
+      ElMessage.error(res.msg || '登录失败')
+      refreshCaptcha() // 失败刷新验证码
+    }
+  } catch (error) {
+    console.error(error)
+    refreshCaptcha()
+  } finally {
     loading.value = false
-    ElMessage.success('欢迎回来')
-    router.push('/dashboard')
-  }, 400)
+  }
 }
+
+onMounted(() => {
+  refreshCaptcha()
+})
 </script>
 
 <style scoped>
@@ -175,4 +224,23 @@ const handleLogin = () => {
   from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.flex { display: flex; }
+.items-center { align-items: center; }
+.w-full { width: 100%; }
+.gap-2 { gap: 8px; }
+.flex-1 { flex: 1; }
+.captcha-box {
+  width: 100px;
+  height: 40px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.captcha-box img { width: 100%; height: 100%; object-fit: cover; }
+.loading-text { font-size: 12px; color: #999; }
 </style>

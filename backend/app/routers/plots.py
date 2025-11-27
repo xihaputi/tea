@@ -8,8 +8,8 @@ router = APIRouter(prefix="/plots", tags=["plots"])
 
 # Simple in-memory store for quick prototyping.
 _plots: List[PlotOut] = [
-    PlotOut(id=1, name="Alpha Field", location="N 27.1, E 119.6", status="moisture-low"),
-    PlotOut(id=2, name="Bamboo Slope", location="N 27.2, E 119.5", status="optimal"),
+    PlotOut(id=1, name="Alpha Field", location="N 27.1, E 119.6", status="moisture-low", code="A001"),
+    PlotOut(id=2, name="Bamboo Slope", location="N 27.2, E 119.5", status="optimal", code="B002"),
 ]
 
 
