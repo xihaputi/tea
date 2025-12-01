@@ -4,14 +4,14 @@ from sqlalchemy import text
 def migrate_db():
     with engine.connect() as conn:
         try:
-            # Ё╒йтлМ╪с mqtt_username ап
+            # бЁб╒ц┼ц■ц▄ц╜б╪ц⌠ mqtt_username ц│ц░
             conn.execute(text("ALTER TABLE devices ADD COLUMN mqtt_username VARCHAR(100)"))
             print("Added mqtt_username column.")
         except Exception as e:
             print(f"mqtt_username column might already exist: {e}")
 
         try:
-            # Ё╒йтлМ╪с mqtt_password ап
+            # бЁб╒ц┼ц■ц▄ц╜б╪ц⌠ mqtt_password ц│ц░
             conn.execute(text("ALTER TABLE devices ADD COLUMN mqtt_password VARCHAR(100)"))
             print("Added mqtt_password column.")
         except Exception as e:

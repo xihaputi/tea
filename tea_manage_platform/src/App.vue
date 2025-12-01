@@ -1,5 +1,7 @@
 <template>
   <router-view v-slot="{ Component }">
+    <!-- 页面切换过渡动画 -->
+    <!-- Page transition animation -->
     <transition name="fade-slide" mode="out-in">
       <component :is="Component" />
     </transition>

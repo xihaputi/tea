@@ -16,11 +16,15 @@ from ..schemas import LoginRequest, LoginResponse, UserInfo
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # 简单的内存缓存存储验证码，实际生产应使用 Redis
+# Simple in-memory cache for storing captchas, use Redis in production
 # Key: captcha_key, Value: { "code": "1234", "expire": datetime }
 CAPTCHA_STORE = {}
 
 def clean_expired_captcha():
-    """清理过期验证码"""
+    """
+    清理过期验证码
+    Clean up expired captchas
+    """
     now = datetime.now()
     expired_keys = [k for k, v in CAPTCHA_STORE.items() if v["expire"] < now]
     for k in expired_keys:
@@ -28,17 +32,24 @@ def clean_expired_captcha():
 
 @router.get("/captcha")
 def get_captcha():
+    """
+    获取图形验证码
+    Get image captcha
+    """
     clean_expired_captcha()
     
     # 生成 4 位数字验证码
+    # Generate 4-digit numeric captcha
     image = ImageCaptcha(width=100, height=40)
     code = "".join(random.choices("0123456789", k=4))
     data = image.generate(code)
     
     # 转为 Base64
+    # Convert to Base64
     b64_img = base64.b64encode(data.read()).decode("utf-8")
     
     # 生成唯一 Key 并存储
+    # Generate unique Key and store
     key = str(uuid.uuid4())
     CAPTCHA_STORE[key] = {
         "code": code,
@@ -52,7 +63,12 @@ def login(
     payload: LoginRequest, 
     db: Session = Depends(get_db)
 ):
+    """
+    用户登录接口
+    User login endpoint
+    """
     # 1. 验证码校验
+    # 1. Captcha validation
     if not payload.captchaKey or not payload.captchaCode:
          raise HTTPException(status_code=400, detail="请输入验证码")
     
@@ -64,9 +80,11 @@ def login(
         raise HTTPException(status_code=400, detail="验证码错误")
         
     # 验证通过后删除
+    # Delete after validation
     del CAPTCHA_STORE[payload.captchaKey]
 
     # 2. 检查数据库是否有用户，自动初始化逻辑保留
+    # 2. Check if user exists, keep auto-init logic
     if db.query(User).count() == 0:
         default_admin = User(
             username="admin",
@@ -80,6 +98,7 @@ def login(
         db.refresh(default_admin)
     
     # 3. 查库验证
+    # 3. Verify against database
     user = db.query(User).filter(User.username == payload.username).first()
     
     if not user or user.password != payload.password:
@@ -100,6 +119,10 @@ def register(
     name: str = Body(..., embed=True),
     db: Session = Depends(get_db)
 ):
+    """
+    用户注册接口
+    User registration endpoint
+    """
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="用户名已存在")
         
@@ -107,7 +130,7 @@ def register(
         username=username,
         password=password,
         name=name,
-        roles="user" # 默认普通用户
+        roles="user" # 默认普通用户 / Default to normal user
     )
     db.add(new_user)
     db.commit()
@@ -119,6 +142,10 @@ def reset_password(
     newPassword: str = Body(..., embed=True),
     db: Session = Depends(get_db)
 ):
+    """
+    重置密码接口
+    Reset password endpoint
+    """
     user = db.query(User).filter(User.username == username).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -128,8 +155,14 @@ def reset_password(
     return {"success": True, "msg": "密码重置成功"}
 
 def get_current_user(token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
+    """
+    获取当前用户的依赖函数
+    Dependency to get current user
+    """
     # 简单的 Token 解析: "token-{id}-{username}"
+    # Simple Token parsing: "token-{id}-{username}"
     # 注意：实际生产必须使用 JWT
+    # Note: Must use JWT in production
     if not token.startswith("token-"):
         raise HTTPException(status_code=401, detail="无效的 Token")
     
@@ -148,6 +181,10 @@ def get_current_user(token: str = Header(..., alias="Authorization"), db: Sessio
 
 @router.get("/user/info", response_model=UserInfo)
 def user_info(user: User = Depends(get_current_user)):
+    """
+    获取用户信息接口
+    Get user info endpoint
+    """
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -157,4 +194,8 @@ def user_info(user: User = Depends(get_current_user)):
 
 @router.post("/logout")
 def logout():
+    """
+    退出登录接口
+    Logout endpoint
+    """
     return {"success": True}

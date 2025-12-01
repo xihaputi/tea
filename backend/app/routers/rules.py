@@ -10,6 +10,10 @@ router = APIRouter(prefix="/rules", tags=["rules"])
 
 @router.get("", response_model=dict)
 def list_rules(page: int = Query(1, ge=1), size: int = Query(10, ge=1), db: Session = Depends(get_db)):
+    """
+    获取规则列表
+    Get rule list
+    """
     query = db.query(Rule)
     total = query.count()
     items = query.offset((page - 1) * size).limit(size).all()
@@ -18,6 +22,10 @@ def list_rules(page: int = Query(1, ge=1), size: int = Query(10, ge=1), db: Sess
 
 @router.post("", response_model=RuleOut)
 def create_rule(payload: RuleCreate, db: Session = Depends(get_db)):
+    """
+    创建规则
+    Create rule
+    """
     rule = Rule(**payload.dict())
     db.add(rule)
     db.commit()
@@ -27,6 +35,10 @@ def create_rule(payload: RuleCreate, db: Session = Depends(get_db)):
 
 @router.put("/{rule_id}", response_model=RuleOut)
 def update_rule(rule_id: int, payload: RuleCreate, db: Session = Depends(get_db)):
+    """
+    更新规则
+    Update rule
+    """
     rule = db.query(Rule).get(rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Not found")
@@ -39,6 +51,10 @@ def update_rule(rule_id: int, payload: RuleCreate, db: Session = Depends(get_db)
 
 @router.put("/{rule_id}/enable")
 def enable_rule(rule_id: int, enabled: bool, db: Session = Depends(get_db)):
+    """
+    启用/禁用规则
+    Enable/Disable rule
+    """
     rule = db.query(Rule).get(rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Not found")
@@ -49,6 +65,10 @@ def enable_rule(rule_id: int, enabled: bool, db: Session = Depends(get_db)):
 
 @router.delete("/{rule_id}")
 def delete_rule(rule_id: int, db: Session = Depends(get_db)):
+    """
+    删除规则
+    Delete rule
+    """
     rule = db.query(Rule).get(rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Not found")

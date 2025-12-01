@@ -88,6 +88,8 @@ import { getUserInfo, logout } from '@/api/auth'
 import { User, SwitchButton, ArrowDown } from '@element-plus/icons-vue'
 
 const router = useRouter()
+// 用户信息响应式对象
+// User info reactive object
 const userInfo = reactive({
   name: '',
   avatar: '',
@@ -95,6 +97,8 @@ const userInfo = reactive({
 })
 const profileVisible = ref(false)
 
+// 获取用户信息
+// Fetch user info
 const fetchUserInfo = async () => {
   try {
     const res = await getUserInfo()
@@ -108,6 +112,8 @@ const fetchUserInfo = async () => {
   }
 }
 
+// 处理下拉菜单命令
+// Handle dropdown commands
 const handleCommand = (command) => {
   if (command === 'logout') {
     handleLogout()
@@ -116,6 +122,8 @@ const handleCommand = (command) => {
   }
 }
 
+// 处理退出登录
+// Handle logout
 const handleLogout = () => {
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
@@ -127,6 +135,8 @@ const handleLogout = () => {
     } catch (e) {
       console.error(e)
     } finally {
+      // 清除 Token 并跳转到登录页
+      // Clear token and redirect to login
       localStorage.removeItem('tea_token')
       router.push('/login')
       ElMessage.success('已退出登录')

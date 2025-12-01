@@ -1,5 +1,7 @@
 import request from '@/utils/request'
 
+// 获取验证码
+// Get captcha
 export function getCaptcha() {
     return request({
         url: '/auth/captcha',
@@ -7,6 +9,8 @@ export function getCaptcha() {
     })
 }
 
+// 用户登录
+// User login
 export function login(data) {
     return request({
         url: '/auth/login',
@@ -15,6 +19,8 @@ export function login(data) {
     })
 }
 
+// 用户注册
+// User registration
 export function register(data) {
     return request({
         url: '/auth/register',
@@ -23,6 +29,8 @@ export function register(data) {
     })
 }
 
+// 重置密码
+// Reset password
 export function resetPassword(data) {
     return request({
         url: '/auth/reset-password',
@@ -31,6 +39,8 @@ export function resetPassword(data) {
     })
 }
 
+// 获取用户信息
+// Get user info
 export function getUserInfo() {
     return request({
         url: '/auth/user/info',
@@ -38,6 +48,8 @@ export function getUserInfo() {
     })
 }
 
+// 退出登录
+// Logout
 export function logout() {
     return request({
         url: '/auth/logout',

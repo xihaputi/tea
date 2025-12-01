@@ -13,8 +13,14 @@ router = APIRouter(prefix="/devices", tags=["devices"])
 
 @router.get("/products")
 def list_products(db: Session = Depends(get_db)):
+    """
+    获取产品列表（设备类型）
+    Get product list (device types)
+    """
     products = db.query(Product).all()
     if not products:
+        # 初始化默认产品数据
+        # Initialize default product data
         default = [
             Product(id=1, name="土壤传感器 v1", parent_id=None),
             Product(id=2, name="茶园气象站 v2", parent_id=None),
@@ -36,6 +42,10 @@ def list_devices(
     gardenId: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
+    """
+    获取设备列表，支持分页和筛选
+    Get device list with pagination and filtering
+    """
     query = db.query(Device)
     if keyword:
         query = query.filter(Device.name.like(f"%{keyword}%"))
@@ -45,6 +55,7 @@ def list_devices(
         query = query.filter(Device.product_id == productId)
     if gardenId is not None:
         # 如果传 -1，表示查询未绑定的设备
+        # If -1, query unbound devices
         if gardenId == -1:
             query = query.filter(Device.garden_id == None)
         else:
@@ -57,6 +68,10 @@ def list_devices(
 
 @router.post("", response_model=DeviceOut)
 def create_device(payload: DeviceCreate, db: Session = Depends(get_db)):
+    """
+    创建新设备
+    Create new device
+    """
     device = Device(**payload.dict())
     db.add(device)
     db.commit()
@@ -66,6 +81,10 @@ def create_device(payload: DeviceCreate, db: Session = Depends(get_db)):
 
 @router.put("/{device_id}")
 def update_device(device_id: int, payload: DeviceUpdate, db: Session = Depends(get_db)):
+    """
+    更新设备信息
+    Update device information
+    """
     device = db.query(Device).get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Not found")
@@ -79,6 +98,10 @@ def update_device(device_id: int, payload: DeviceUpdate, db: Session = Depends(g
 
 @router.get("/{device_id}", response_model=DeviceOut)
 def get_device(device_id: int, db: Session = Depends(get_db)):
+    """
+    获取设备详情
+    Get device details
+    """
     device = db.query(Device).get(device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Not found")
@@ -87,6 +110,10 @@ def get_device(device_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{device_id}/telemetry")
 def get_latest_telemetry(device_id: int, db: Session = Depends(get_db)):
+    """
+    获取设备最新遥测数据
+    Get latest telemetry data for device
+    """
     latest = (
         db.query(Telemetry)
         .filter(Telemetry.device_id == device_id)
@@ -105,6 +132,10 @@ def get_telemetry_history(
     keys: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    """
+    获取设备历史遥测数据
+    Get historical telemetry data for device
+    """
     query = db.query(Telemetry).filter(Telemetry.device_id == device_id)
     if startTs:
         query = query.filter(Telemetry.ts >= startTs)
@@ -118,4 +149,3 @@ def get_telemetry_history(
     for r in rows:
         result.setdefault(r.key, []).append({"ts": r.ts, "value": r.value})
     return result
-

@@ -18,6 +18,10 @@ def list_gardens(
     company: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    """
+    获取茶园列表
+    Get tea garden list
+    """
     query = db.query(TeaGarden)
     if name:
         query = query.filter(TeaGarden.name.like(f"%{name}%"))
@@ -30,6 +34,10 @@ def list_gardens(
 
 @router.post("", response_model=TeaGardenOut)
 def create_garden(payload: TeaGardenCreate, db: Session = Depends(get_db)):
+    """
+    创建茶园
+    Create tea garden
+    """
     item = TeaGarden(**payload.dict())
     db.add(item)
     db.commit()
@@ -39,6 +47,10 @@ def create_garden(payload: TeaGardenCreate, db: Session = Depends(get_db)):
 
 @router.get("/{garden_id}", response_model=TeaGardenOut)
 def get_garden(garden_id: int, db: Session = Depends(get_db)):
+    """
+    获取茶园详情
+    Get tea garden details
+    """
     item = db.query(TeaGarden).get(garden_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -47,6 +59,10 @@ def get_garden(garden_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{garden_id}")
 def update_garden(garden_id: int, payload: TeaGardenUpdate, db: Session = Depends(get_db)):
+    """
+    更新茶园信息
+    Update tea garden information
+    """
     item = db.query(TeaGarden).get(garden_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -58,6 +74,10 @@ def update_garden(garden_id: int, payload: TeaGardenUpdate, db: Session = Depend
 
 @router.delete("/{garden_id}")
 def delete_garden(garden_id: int, db: Session = Depends(get_db)):
+    """
+    删除（停用）茶园
+    Delete (deactivate) tea garden
+    """
     item = db.query(TeaGarden).get(garden_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
@@ -68,11 +88,19 @@ def delete_garden(garden_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{garden_id}/plots", response_model=list[PlotOut])
 def list_plots(garden_id: int, db: Session = Depends(get_db)):
+    """
+    获取茶园下的地块列表
+    Get plot list for a tea garden
+    """
     return db.query(Plot).filter(Plot.garden_id == garden_id).all()
 
 
 @router.post("/{garden_id}/plots", response_model=PlotOut)
 def create_plot(garden_id: int, payload: PlotCreate, db: Session = Depends(get_db)):
+    """
+    在茶园下创建地块
+    Create plot in a tea garden
+    """
     plot = Plot(garden_id=garden_id, **payload.dict())
     db.add(plot)
     db.commit()

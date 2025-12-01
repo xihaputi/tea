@@ -2,15 +2,21 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
-from ..config import get_settings
+from ..config import settings
 
-settings = get_settings()
-settings.upload_dir.mkdir(parents=True, exist_ok=True)
+
+# 确保上传目录存在
+# Ensure upload directory exists
+UPLOAD_DIR = Path(settings.UPLOAD_DIR)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 async def save_upload_file(upload_file: UploadFile) -> Path:
-    """Save an uploaded file to the uploads directory."""
-    destination = settings.upload_dir / upload_file.filename
+    """
+    保存上传的文件
+    Save an uploaded file
+    """
+    destination = UPLOAD_DIR / upload_file.filename
     content = await upload_file.read()
     destination.write_bytes(content)
     return destination

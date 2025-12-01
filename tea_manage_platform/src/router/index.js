@@ -1,11 +1,13 @@
 ﻿import { createRouter, createWebHistory } from "vue-router"
 import Layout from "@/layout/index.vue"
 
+// 路由配置数组
+// Route configuration array
 const routes = [
   {
     path: "/login",
     component: () => import("@/views/login/index.vue"),
-    meta: { title: "登录" },
+    meta: { title: "登录" }, // 页面标题 / Page title
   },
   {
     path: "/login/register",
@@ -28,7 +30,7 @@ const routes = [
       {
         path: "",
         component: () => import("@/views/dashboard/index.vue"),
-        meta: { title: "运营总览", requiresAuth: true },
+        meta: { title: "运营总览", requiresAuth: true }, // requiresAuth: 需要登录 / Requires login
       },
     ],
   },
@@ -87,17 +89,29 @@ const routes = [
   },
 ]
 
+// 创建路由实例
+// Create router instance
 const router = createRouter({
   history: createWebHistory(),
   routes,
 })
 
+// 全局前置守卫
+// Global before guard
 router.beforeEach((to, from, next) => {
+  // 获取 Token
+  // Get Token
   const token = localStorage.getItem("tea_token")
+
+  // 如果是登录页，直接放行
+  // If login page, allow
   if (to.path === "/login") {
     next()
     return
   }
+
+  // 如果需要认证且没有 Token，跳转到登录页
+  // If auth required and no token, redirect to login
   if (to.meta.requiresAuth && !token) {
     next("/login")
   } else {

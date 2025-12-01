@@ -11,6 +11,10 @@ router = APIRouter(prefix="/advice", tags=["advice"])
 
 @router.get("/today", response_model=AdviceOut)
 def get_today_advice(plot_id: int = Query(..., gt=0)) -> AdviceOut:
+    """
+    获取今日农事建议
+    Get farming advice for today
+    """
     latest = _get_latest_sensor(plot_id)
     if not latest:
         raise HTTPException(status_code=404, detail="No sensor data for this plot")
@@ -23,4 +27,3 @@ def get_today_advice(plot_id: int = Query(..., gt=0)) -> AdviceOut:
         advice=decision["advice"],
         timestamp=datetime.now(timezone.utc),
     )
-

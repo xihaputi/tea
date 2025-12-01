@@ -13,8 +13,12 @@ disease_model = DiseaseModel()
 
 @router.post("/detect", response_model=DiseasePrediction)
 async def detect_disease(file: UploadFile = File(...), plot_id: int | None = None) -> DiseasePrediction:
+    """
+    病虫害识别接口
+    Disease detection endpoint
+    """
     if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image uploads are supported")
+        raise HTTPException(status_code=400, detail="仅支持图片上传 / Only image uploads are supported")
 
     saved_path: Path = await save_upload_file(file)
     result = disease_model.predict(saved_path)
@@ -26,4 +30,3 @@ async def detect_disease(file: UploadFile = File(...), plot_id: int | None = Non
         plot_id=plot_id,
         timestamp=datetime.now(timezone.utc),
     )
-
