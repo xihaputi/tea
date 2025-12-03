@@ -29,7 +29,24 @@ def list_gardens(
         query = query.filter(TeaGarden.company == company)
     total = query.count()
     items = query.offset((page - 1) * size).limit(size).all()
-    return PageResult(list=items, total=total)
+    
+    # 构造带有统计信息的返回列表
+    result_list = []
+    for garden in items:
+        # 计算统计数据
+        plot_count = len(garden.plots)
+        device_count = len(garden.devices)
+        online_count = len([d for d in garden.devices if d.status == 'online'])
+        
+        # 转换为 Schema 对象 (Pydantic 会自动处理 extra fields，或者我们需要手动构造)
+        # 由于 TeaGardenOut 是 Pydantic 模型，我们可以用 from_orm 并手动赋值
+        out = TeaGardenOut.from_orm(garden)
+        out.plotCount = plot_count
+        out.totalCount = device_count
+        out.onlineCount = online_count
+        result_list.append(out)
+        
+    return PageResult(list=result_list, total=total)
 
 
 @router.post("", response_model=TeaGardenOut)
@@ -81,6 +98,18 @@ def delete_garden(garden_id: int, db: Session = Depends(get_db)):
     item = db.query(TeaGarden).get(garden_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
+        
+    # 1. 解绑设备 (Set garden_id = None)
+    # Unbind devices
+    from ..models import Device
+    db.query(Device).filter(Device.garden_id == garden_id).update({Device.garden_id: None})
+    
+    # 2. 删除关联的地块
+    # Delete associated plots
+    db.query(Plot).filter(Plot.garden_id == garden_id).delete()
+    
+    # 3. 删除茶园
+    # Delete garden
     db.delete(item)
     db.commit()
     return {"success": True}

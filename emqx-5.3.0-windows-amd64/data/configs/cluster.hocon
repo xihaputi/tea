@@ -1,0 +1,36 @@
+authentication = [
+  {
+    backend = http
+    body {
+      clientid = "${clientid}"
+      password = "${password}"
+      username = "${username}"
+    }
+    connect_timeout = 15s
+    enable = true
+    enable_pipelining = 100
+    headers {
+      accept = "application/json"
+      cache-control = no-cache
+      connection = keep-alive
+      content-type = "application/json"
+      keep-alive = "timeout=30, max=1000"
+    }
+    mechanism = password_based
+    method = post
+    pool_size = 8
+    request_timeout = 5s
+    ssl {
+      ciphers = []
+      depth = 10
+      enable = false
+      hibernate_after = 5s
+      log_level = notice
+      reuse_sessions = true
+      secure_renegotiate = true
+      verify = verify_peer
+      versions = [tlsv1.3, tlsv1.2]
+    }
+    url = "http://127.0.0.1:8000/api/auth/mqtt"
+  }
+]

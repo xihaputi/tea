@@ -103,8 +103,12 @@ class TeaGarden(Base):
     address = Column(String(255), nullable=True)    # 地址 / Address
     manager = Column(String(100), nullable=True)    # 负责人 / Manager
     company = Column(String(100), nullable=True)    # 所属公司 / Company
+
     area = Column(Float, nullable=True)             # 面积 / Area
     desc = Column(Text, nullable=True)              # 描述 / Description
+    latitude = Column(Float, nullable=True)         # 纬度 / Latitude
+    longitude = Column(Float, nullable=True)        # 经度 / Longitude
+    camera_url = Column(String(255), nullable=True) # 摄像头地址 / Camera URL
     status = Column(String(50), default="active")   # 状态 / Status
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
@@ -158,6 +162,7 @@ class Device(Base):
     mqtt_password = Column(String(100), nullable=True) # MQTT 密码 / MQTT Password
     status = Column(String(50), default="offline")  # 状态 / Status
     last_time = Column(DateTime, default=datetime.utcnow) # 最后在线时间 / Last Online Time
+    sensor_config = Column(Text, nullable=True) # 传感器配置 (JSON) / Sensor Config
 
     garden = relationship("TeaGarden", back_populates="devices")
 

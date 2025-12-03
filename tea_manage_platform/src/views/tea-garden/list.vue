@@ -83,6 +83,22 @@
             <template #append>亩</template>
           </el-input>
         </el-form-item>
+        <el-form-item label="地理位置" required>
+            <el-row :gutter="10" style="width: 100%">
+                <el-col :span="10">
+                    <el-input v-model="form.longitude" placeholder="经度" readonly />
+                </el-col>
+                <el-col :span="10">
+                    <el-input v-model="form.latitude" placeholder="纬度" readonly />
+                </el-col>
+                <el-col :span="4">
+                    <el-button type="primary" icon="Location" @click="openMapDialog" style="width: 100%">选点</el-button>
+                </el-col>
+            </el-row>
+        </el-form-item>
+        <el-form-item label="摄像头" prop="camera_url">
+            <el-input v-model="form.camera_url" placeholder="RTSP/HLS 视频流地址" />
+        </el-form-item>
         <el-form-item label="描述信息" prop="desc">
           <el-input v-model="form.desc" type="textarea" rows="3" placeholder="请输入描述信息" />
         </el-form-item>
@@ -114,6 +130,26 @@
           <el-button type="primary" @click="submitBindDevice" :loading="bindLoading">确认绑定</el-button>
         </span>
       </template>
+    </el-dialog>
+
+    <!-- 地图选点弹窗 -->
+    <el-dialog v-model="mapDialogVisible" title="地图选点" width="800px" top="5vh" @opened="initSelectMap">
+        <div style="position: relative;">
+            <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                <el-input v-model="mapSearchKeyword" placeholder="输入关键字搜索地址" id="map-search-input" clearable @keyup.enter="searchMapLocation" />
+                <el-button type="primary" @click="searchMapLocation">搜索</el-button>
+            </div>
+            <div id="select-map-container" style="width: 100%; height: 500px; border-radius: 4px; border: 1px solid #dcdfe6;"></div>
+            <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                当前选中: 经度 {{ tempLng || '-' }}, 纬度 {{ tempLat || '-' }}
+            </div>
+        </div>
+        <template #footer>
+            <span class="dialog-footer">
+                <el-button @click="mapDialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="confirmMapSelection" :disabled="!tempLat">确定使用该位置</el-button>
+            </span>
+        </template>
     </el-dialog>
   </div>
 </template>
@@ -148,12 +184,18 @@ const form = reactive({
   manager: '',
   address: '',
   area: null,
+  latitude: null,
+  longitude: null,
+  camera_url: '',
   desc: ''
 })
 
 const rules = {
   name: [{ required: true, message: '请输入茶园名称', trigger: 'blur' }],
-  company: [{ required: true, message: '请选择所属公司', trigger: 'change' }]
+  company: [{ required: true, message: '请选择所属公司', trigger: 'change' }],
+  area: [
+    { type: 'number', message: '必须为数字值', trigger: 'blur', transform: (value) => Number(value) }
+  ]
 }
 
 // 绑定设备相关
@@ -215,6 +257,9 @@ const handleEdit = (row) => {
   form.manager = row.manager
   form.address = row.address
   form.area = row.area
+  form.latitude = row.latitude
+  form.longitude = row.longitude
+  form.camera_url = row.camera_url
   form.desc = row.desc
   dialogVisible.value = true
 }
@@ -225,6 +270,9 @@ const resetForm = () => {
   form.manager = ''
   form.address = ''
   form.area = null
+  form.latitude = null
+  form.longitude = null
+  form.camera_url = ''
   form.desc = ''
 }
 
@@ -305,19 +353,130 @@ const submitBindDevice = async () => {
   }
 }
 
+
+
+// 地图选点相关
+const mapDialogVisible = ref(false)
+const mapSearchKeyword = ref('')
+const tempLat = ref(null)
+const tempLng = ref(null)
+let selectMap = null
+let selectMarker = null
+let placeSearch = null
+
+const openMapDialog = () => {
+    mapDialogVisible.value = true
+    tempLat.value = form.latitude
+    tempLng.value = form.longitude
+}
+
+const initSelectMap = () => {
+    if (!window.AMap) {
+        setTimeout(initSelectMap, 500)
+        return
+    }
+    
+    // 默认杭州
+    const center = (tempLng.value && tempLat.value) ? [tempLng.value, tempLat.value] : [120.15, 30.28]
+    
+    selectMap = new window.AMap.Map('select-map-container', {
+        zoom: 12,
+        center: center,
+        viewMode: '3D'
+    })
+
+    // 点击选点
+    selectMap.on('click', (e) => {
+        updateMarker(e.lnglat.getLng(), e.lnglat.getLat())
+    })
+
+    // 如果已有坐标，显示标记
+    if (tempLng.value && tempLat.value) {
+        updateMarker(tempLng.value, tempLat.value)
+    }
+
+    // 加载搜索插件
+    window.AMap.plugin(['AMap.PlaceSearch'], function() {
+        placeSearch = new window.AMap.PlaceSearch({
+            pageSize: 5,
+            pageIndex: 1,
+            city: "010", // 默认城市
+            citylimit: false,
+            map: selectMap,
+            panel: "panel"
+        });
+    });
+}
+
+const updateMarker = (lng, lat) => {
+    tempLng.value = parseFloat(lng.toFixed(6))
+    tempLat.value = parseFloat(lat.toFixed(6))
+    
+    if (selectMarker) {
+        selectMarker.setPosition([lng, lat])
+    } else {
+        selectMarker = new window.AMap.Marker({
+            position: [lng, lat],
+            map: selectMap
+        })
+    }
+}
+
+const searchMapLocation = () => {
+    if (!placeSearch || !mapSearchKeyword.value) return
+    placeSearch.search(mapSearchKeyword.value, (status, result) => {
+        if (status === 'complete' && result.info === 'OK') {
+            // 搜索成功，PlaceSearch 会自动在地图上标注，我们取第一个结果
+            if (result.poiList.pois.length > 0) {
+                const poi = result.poiList.pois[0]
+                updateMarker(poi.location.lng, poi.location.lat)
+                selectMap.setCenter([poi.location.lng, poi.location.lat])
+                selectMap.setZoom(15)
+            }
+        } else {
+            ElMessage.warning('未找到相关地址')
+        }
+    })
+}
+
+const confirmMapSelection = () => {
+    form.latitude = tempLat.value
+    form.longitude = tempLng.value
+    mapDialogVisible.value = false
+}
+
 onMounted(() => {
   fetchData()
 })
 </script>
 
 <style scoped>
-.page { padding: 20px; background: linear-gradient(180deg, #f7f9fb 0%, #f2f6f9 100%); min-height: 100%; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.eyebrow { font-size: 13px; color: #8c9ba8; letter-spacing: 1px; text-transform: uppercase; }
-.title { font-size: 26px; font-weight: 700; color: #1f2a44; }
-.sub { color: #6b7785; margin-top: 4px; }
-.card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); padding: 16px; margin-bottom: 16px; }
+.page { 
+  padding: 24px; 
+  background: #f0f2f5; 
+  min-height: 100vh; 
+}
+.page-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px; 
+  background: #fff;
+  padding: 20px 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.eyebrow { font-size: 12px; color: #909399; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.title { font-size: 24px; font-weight: 600; color: #303133; }
+.sub { color: #606266; font-size: 14px; margin-top: 4px; }
+.card { 
+  background: #fff; 
+  border-radius: 8px; 
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03); 
+  padding: 24px; 
+  margin-bottom: 24px; 
+}
 .filters { margin-bottom: 16px; }
-.tag.success { color: #16c06e; font-weight: 600; }
-.pagination { margin-top: 16px; text-align: right; }
+.tag.success { color: #67c23a; font-weight: 600; }
+.pagination { margin-top: 24px; text-align: right; }
 </style>

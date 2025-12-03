@@ -59,56 +59,32 @@ def get_captcha():
     return {"key": key, "image": f"data:image/png;base64,{b64_img}"}
 
 @router.post("/login", response_model=LoginResponse)
-def login(
-    payload: LoginRequest, 
-    db: Session = Depends(get_db)
-):
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """
-    用户登录接口
-    User login endpoint
+    用户登录接口（已去除验证码，固定账号 admin/admin 可用）
     """
-    # 1. 验证码校验
-    # 1. Captcha validation
-    if not payload.captchaKey or not payload.captchaCode:
-         raise HTTPException(status_code=400, detail="请输入验证码")
-    
-    stored = CAPTCHA_STORE.get(payload.captchaKey)
-    if not stored:
-        raise HTTPException(status_code=400, detail="验证码已过期，请刷新")
-    
-    if stored["code"] != payload.captchaCode:
-        raise HTTPException(status_code=400, detail="验证码错误")
-        
-    # 验证通过后删除
-    # Delete after validation
-    del CAPTCHA_STORE[payload.captchaKey]
-
-    # 2. 检查数据库是否有用户，自动初始化逻辑保留
-    # 2. Check if user exists, keep auto-init logic
+    # 初始化默认管理员（admin/admin）
     if db.query(User).count() == 0:
         default_admin = User(
             username="admin",
-            password="123456",
+            password="admin",
             name="超级管理员",
             avatar="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
-            roles="admin"
+            roles="admin",
         )
         db.add(default_admin)
         db.commit()
         db.refresh(default_admin)
-    
-    # 3. 查库验证
-    # 3. Verify against database
+
     user = db.query(User).filter(User.username == payload.username).first()
-    
     if not user or user.password != payload.password:
         raise HTTPException(status_code=401, detail="账号或密码错误")
-        
+
     user_info = UserInfo(
         id=user.id,
         name=user.name,
         avatar=user.avatar or "",
-        roles=user.roles.split(",") if user.roles else []
+        roles=user.roles.split(",") if user.roles else [],
     )
     return LoginResponse(token=f"token-{user.id}-{user.username}", userInfo=user_info)
 
@@ -159,10 +135,9 @@ def get_current_user(token: str = Header(..., alias="Authorization"), db: Sessio
     获取当前用户的依赖函数
     Dependency to get current user
     """
-    # 简单的 Token 解析: "token-{id}-{username}"
-    # Simple Token parsing: "token-{id}-{username}"
-    # 注意：实际生产必须使用 JWT
-    # Note: Must use JWT in production
+    # 允许 Authorization: Bearer token-xxx
+    if token.startswith("Bearer "):
+        token = token.split(" ", 1)[1]
     if not token.startswith("token-"):
         raise HTTPException(status_code=401, detail="无效的 Token")
     

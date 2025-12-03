@@ -4,11 +4,10 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import settings
 
-# 创建数据库引擎
-# Create database engine
-engine = create_engine(
-    settings.DATABASE_URL, connect_args={"check_same_thread": False}
-)
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
 
 # 创建 SessionLocal 类
 # Create SessionLocal class

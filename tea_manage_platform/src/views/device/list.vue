@@ -43,6 +43,22 @@
                 </div>
               </template>
             </el-table-column>
+            <el-table-column label="实时数据" min-width="200">
+              <template #default="{ row }">
+                <div v-if="row.sensor_config">
+                  <el-tag 
+                    v-for="(cfg, key) in parseSensorConfig(row.sensor_config)" 
+                    :key="key" 
+                    v-show="cfg.show"
+                    size="small" 
+                    style="margin-right: 4px; margin-bottom: 4px;"
+                  >
+                    {{ cfg.name || key }}: {{ getSensorValue(row, key) }} {{ cfg.unit || '' }}
+                  </el-tag>
+                </div>
+                <span v-else class="text-gray-400 text-xs">未配置</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="last_time" label="最后上报时间" width="180" />
             <el-table-column label="MQTT 账号" width="120" show-overflow-tooltip>
                <template #default="{ row }">
@@ -52,8 +68,9 @@
             <el-table-column label="操作" width="220">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-                <el-button link type="primary">查看曲线</el-button>
-                <el-button link type="primary">调试</el-button>
+                <el-button link type="primary" @click="handleCurve(row)">查看曲线</el-button>
+                <el-button link type="primary" @click="handleDebug(row)">调试</el-button>
+                <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -75,6 +92,17 @@
             <el-option v-for="item in productTree" :key="item.id" :label="item.label" :value="item.id" />
           </el-select>
         </el-form-item>
+        
+        <el-divider content-position="left">MQTT 配置指南</el-divider>
+        <el-form-item label="上报话题">
+            <el-input :value="computedTopic" readonly>
+                <template #append>
+                    <el-button @click="copyTopic" icon="CopyDocument" />
+                </template>
+            </el-input>
+            <div class="text-gray-400 text-xs mt-1">格式: tea/{产品名称}/{序列号}/telemetry</div>
+        </el-form-item>
+
         <el-divider content-position="left">MQTT 认证信息</el-divider>
         <el-form-item label="MQTT 用户名" prop="mqtt_username">
           <el-input v-model="form.mqtt_username" placeholder="设备连接 MQTT 的用户名" />
@@ -90,19 +118,77 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 调试/配置弹窗 -->
+    <el-dialog v-model="debugVisible" title="传感器配置" width="710px">
+      <div v-loading="debugLoading">
+        <div class="mb-4 text-gray-500 text-sm flex-center" style="justify-content: space-between;">
+          <span>检测到以下传感器数据键值 (基于最近10条遥测数据)：</span>
+          <el-space>
+            <el-button type="warning" link @click="handleStandardizeKeys">一键标准化</el-button>
+            <el-button type="primary" link icon="Plus" @click="handleAddSensor">添加传感器</el-button>
+          </el-space>
+        </div>
+        <el-table :data="debugSensors" border style="width: 100%">
+          <el-table-column label="原始键名 (Key)" width="150">
+            <template #default="{ row }">
+              <el-input v-model="row.key" placeholder="例如: sensor1" size="small" />
+            </template>
+          </el-table-column>
+          <el-table-column label="显示名称" width="160">
+            <template #default="{ row }">
+              <el-input v-model="row.name" placeholder="例如: 温度" size="small" />
+            </template>
+          </el-table-column>
+          <el-table-column label="单位" width="100">
+            <template #default="{ row }">
+              <el-input v-model="row.unit" placeholder="℃" size="small" />
+            </template>
+          </el-table-column>
+          <el-table-column label="当前值" width="100">
+             <template #default="{ row }">
+               {{ row.value }}
+             </template>
+          </el-table-column>
+          <el-table-column label="列表显示" align="center" width="90">
+            <template #default="{ row }">
+              <el-switch v-model="row.show" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" align="center" width="80">
+            <template #default="{ row, $index }">
+              <el-button type="danger" link icon="Delete" @click="handleDeleteSensor($index)" />
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="debugVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveConfig" :loading="savingConfig">保存配置</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 历史数据弹窗 -->
+    <DeviceHistory ref="historyRef" />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { getProductGroups, getDeviceList, createDevice, updateDevice } from '@/api/device'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { getProductGroups, getDeviceList, createDevice, updateDevice, getLatestTelemetry, deleteDevice } from '@/api/device'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import DeviceHistory from './components/DeviceHistory.vue'
 
 const searchKey = ref('')
 const status = ref('all')
 const productTree = ref([])
 const deviceList = ref([])
 const loading = ref(false)
+
+// 历史数据相关
+const historyRef = ref(null)
 
 // 新增/编辑相关
 const dialogVisible = ref(false)
@@ -117,6 +203,13 @@ const form = reactive({
   mqtt_username: '',
   mqtt_password: ''
 })
+
+// 调试/配置相关
+const debugVisible = ref(false)
+const debugLoading = ref(false)
+const savingConfig = ref(false)
+const currentDevice = ref(null)
+const debugSensors = ref([])
 
 const rules = {
   name: [{ required: true, message: '请输入设备名称', trigger: 'blur' }],
@@ -145,12 +238,46 @@ const fetchDevices = async () => {
     const res = await getDeviceList(params)
     if (res) {
       deviceList.value = res.list || []
+      // 预加载每个设备的最新遥测数据，用于列表显示
+      deviceList.value.forEach(dev => {
+         fetchDeviceTelemetry(dev)
+      })
     }
   } catch (error) {
     console.error(error)
   } finally {
     loading.value = false
   }
+}
+
+const fetchDeviceTelemetry = async (device) => {
+    try {
+        const res = await getLatestTelemetry(device.id)
+        if (res) {
+            device.telemetryData = {}
+            res.forEach(item => {
+                device.telemetryData[item.key] = item.value
+            })
+        }
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const parseSensorConfig = (jsonStr) => {
+    if (!jsonStr) return {}
+    try {
+        return JSON.parse(jsonStr)
+    } catch (e) {
+        return {}
+    }
+}
+
+const getSensorValue = (row, key) => {
+    if (row.telemetryData && row.telemetryData[key] !== undefined) {
+        return row.telemetryData[key]
+    }
+    return '-'
 }
 
 const handleSearch = () => {
@@ -173,6 +300,188 @@ const handleEdit = (row) => {
   form.mqtt_username = row.mqtt_username || ''
   form.mqtt_password = row.mqtt_password || ''
   dialogVisible.value = true
+}
+
+const handleDelete = (row) => {
+  ElMessageBox.prompt('此操作将永久删除该设备及其所有历史数据，不可恢复！请输入“确认删除设备”以确认。', '危险操作', {
+    confirmButtonText: '确定删除',
+    cancelButtonText: '取消',
+    inputPattern: /^确认删除设备$/,
+    inputErrorMessage: '输入内容不正确',
+    type: 'error'
+  }).then(async ({ value }) => {
+    try {
+      await deleteDevice(row.id)
+      ElMessage.success('设备已删除')
+      fetchDevices()
+    } catch (error) {
+      console.error(error)
+    }
+  }).catch(() => {
+    // 取消删除
+  })
+}
+
+const handleDebug = async (row) => {
+    currentDevice.value = row
+    debugVisible.value = true
+    debugLoading.value = true
+    debugSensors.value = []
+    
+    try {
+        // 1. 获取最新遥测数据
+        const res = await getLatestTelemetry(row.id)
+        // 2. 解析现有配置
+        const config = parseSensorConfig(row.sensor_config)
+        const ignoredKeys = new Set(config.__ignored || [])
+        
+        // 3. 合并数据
+        const map = new Map()
+        
+        // 先加入已有配置的 Key (排除被忽略的)
+        Object.keys(config).forEach(key => {
+            if (key === '__ignored') return
+            map.set(key, {
+                key: key,
+                name: config[key].name || key,
+                unit: config[key].unit || '', // Add unit
+                show: config[key].show || false,
+                value: '-'
+            })
+        })
+        
+        // 再加入最新遥测的 Key
+        if (res) {
+            res.forEach(item => {
+                // 如果在忽略列表中，且不在当前配置中（防止误删后又想加回来），则跳过
+                if (ignoredKeys.has(item.key) && !map.has(item.key)) {
+                    return
+                }
+
+                if (map.has(item.key)) {
+                    map.get(item.key).value = item.value
+                } else {
+                    map.set(item.key, {
+                        key: item.key,
+                        name: item.key,
+                        unit: '', // Default unit empty
+                        show: false,
+                        value: item.value
+                    })
+                }
+            })
+        }
+        
+        debugSensors.value = Array.from(map.values())
+        
+    } catch (error) {
+        console.error(error)
+        ElMessage.error('获取数据失败')
+    } finally {
+        debugLoading.value = false
+    }
+}
+
+const handleAddSensor = () => {
+    // 1. Find max sensor number
+    let maxNum = 0
+    debugSensors.value.forEach(item => {
+        const match = item.key.match(/^sensor(\d+)$/)
+        if (match) {
+            const num = parseInt(match[1])
+            if (num > maxNum) maxNum = num
+        }
+    })
+    
+    // 2. Generate new key
+    const newKey = `sensor${maxNum + 1}`
+    
+    // 3. Add to list
+    debugSensors.value.push({
+        key: newKey,
+        name: '',
+        unit: '',
+        show: true,
+        value: '-' // No value yet
+    })
+}
+
+const handleStandardizeKeys = () => {
+    ElMessageBox.confirm(
+        '此操作将把所有键名重命名为 sensor1, sensor2... 格式，且不可撤销。请确保设备端也同步修改发送的键名。是否继续？',
+        '警告',
+        {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+        }
+    ).then(() => {
+        debugSensors.value.forEach((item, index) => {
+            item.key = `sensor${index + 1}`
+        })
+        ElMessage.success('键名已标准化，请点击保存配置')
+    }).catch(() => {})
+}
+
+const handleDeleteSensor = (index) => {
+    debugSensors.value.splice(index, 1)
+}
+
+const handleSaveConfig = async () => {
+    savingConfig.value = true
+    try {
+        const config = {}
+        const currentKeys = new Set()
+        
+        debugSensors.value.forEach(item => {
+            config[item.key] = {
+                name: item.name,
+                unit: item.unit, // Save unit
+                show: item.show
+            }
+            currentKeys.add(item.key)
+        })
+        
+        // 计算忽略列表：在最新遥测中存在，但在当前配置中不存在的 Key
+        const ignored = []
+        if (currentDevice.value.telemetryData) {
+            Object.keys(currentDevice.value.telemetryData).forEach(key => {
+                if (!currentKeys.has(key)) {
+                    ignored.push(key)
+                }
+            })
+        }
+        // 保留之前的忽略列表（如果它们还没被加回来的话）
+        const oldConfig = parseSensorConfig(currentDevice.value.sensor_config)
+        if (oldConfig.__ignored) {
+            oldConfig.__ignored.forEach(key => {
+                if (!currentKeys.has(key) && !ignored.includes(key)) {
+                    ignored.push(key)
+                }
+            })
+        }
+        
+        if (ignored.length > 0) {
+            config['__ignored'] = ignored
+        }
+        
+        await updateDevice(currentDevice.value.id, {
+            sensor_config: JSON.stringify(config)
+        })
+        
+        ElMessage.success('配置已保存')
+        debugVisible.value = false
+        fetchDevices() // 刷新列表
+    } catch (error) {
+        console.error(error)
+        ElMessage.error('保存失败')
+    } finally {
+        savingConfig.value = false
+    }
+}
+
+const handleCurve = (row) => {
+    historyRef.value.open(row)
 }
 
 const resetForm = () => {
@@ -207,6 +516,28 @@ const handleSubmit = async () => {
   })
 }
 
+
+
+const computedTopic = computed(() => {
+    const sn = form.sn || '{序列号}'
+    let productName = '{产品名称}'
+    if (form.product_id) {
+        const product = productTree.value.find(p => p.id === form.product_id)
+        if (product) {
+            productName = product.label
+        }
+    }
+    return `tea/${productName}/${sn}/telemetry`
+})
+
+const copyTopic = () => {
+    navigator.clipboard.writeText(computedTopic.value).then(() => {
+        ElMessage.success('话题已复制')
+    }).catch(() => {
+        ElMessage.error('复制失败')
+    })
+}
+
 onMounted(() => {
   fetchProducts()
   fetchDevices()
@@ -226,4 +557,9 @@ onMounted(() => {
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .bg-green { background: #16c06e; }
 .bg-gray { background: #909399; }
+.mb-4 { margin-bottom: 16px; }
+.text-gray-500 { color: #909399; }
+.text-sm { font-size: 14px; }
+.text-xs { font-size: 12px; }
+.text-gray-400 { color: #c0c4cc; }
 </style>

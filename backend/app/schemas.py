@@ -121,6 +121,9 @@ class TeaGardenCreate(BaseModel):
     company: Optional[str] = None
     area: Optional[float] = None
     desc: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    camera_url: Optional[str] = None
 
 
 class TeaGardenUpdate(TeaGardenCreate):
@@ -134,6 +137,11 @@ class TeaGardenOut(TeaGardenCreate):
     status: str
     created_at: datetime
     updated_at: datetime
+    
+    # 统计字段
+    plotCount: int = 0
+    totalCount: int = 0
+    onlineCount: int = 0
 
     class Config:
         orm_mode = True
@@ -168,6 +176,7 @@ class DeviceCreate(BaseModel):
     garden_id: Optional[int] = None
     mqtt_username: Optional[str] = None
     mqtt_password: Optional[str] = None
+    sensor_config: Optional[str] = None
 
 
 class DeviceUpdate(BaseModel):
@@ -179,13 +188,18 @@ class DeviceUpdate(BaseModel):
     status: Optional[str] = None
     mqtt_username: Optional[str] = None
     mqtt_password: Optional[str] = None
+    sensor_config: Optional[str] = None
 
+
+    class Config:
+        orm_mode = True
 
 class DeviceOut(DeviceCreate):
     """设备输出模型 / Device Output Model"""
     id: int
     status: str
     last_time: datetime
+    productName: Optional[str] = None
 
     class Config:
         orm_mode = True

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Device, Product, TeaGarden, Telemetry
 from ..schemas import DeviceCreate, DeviceOut, DeviceUpdate
+from ..services.telemetry import save_telemetry_http
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -63,7 +64,19 @@ def list_devices(
             
     total = query.count()
     items = query.offset((page - 1) * size).limit(size).all()
-    return {"list": items, "total": total}
+    
+    # 手动填充 productName
+    # Manually populate productName
+    result_list = []
+    for device in items:
+        out = DeviceOut.from_orm(device)
+        if device.product_id:
+            product = db.query(Product).get(device.product_id)
+            if product:
+                out.productName = product.name
+        result_list.append(out)
+        
+    return {"list": result_list, "total": total}
 
 
 @router.post("", response_model=DeviceOut)
@@ -149,3 +162,36 @@ def get_telemetry_history(
     for r in rows:
         result.setdefault(r.key, []).append({"ts": r.ts, "value": r.value})
     return result
+
+
+@router.post("/{device_id}/telemetry")
+def ingest_telemetry(device_id: int, payload: dict, db: Session = Depends(get_db)):
+    """
+    通过 HTTP 上报遥测，写入数据库
+    """
+    ok = save_telemetry_http(device_id, payload, db)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"success": True}
+
+
+@router.delete("/{device_id}")
+def delete_device(device_id: int, db: Session = Depends(get_db)):
+    """
+    删除设备及其关联数据
+    Delete device and its associated data
+    """
+    device = db.query(Device).get(device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+        
+    # 1. 删除关联的遥测数据
+    # Delete associated telemetry data
+    db.query(Telemetry).filter(Telemetry.device_id == device_id).delete()
+    
+    # 2. 删除设备
+    # Delete device
+    db.delete(device)
+    db.commit()
+    
+    return {"success": True}
