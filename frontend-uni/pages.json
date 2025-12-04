@@ -3,13 +3,17 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "茶园总览"
+        "navigationBarTitleText": "茶园总览",
+        "navigationBarBackgroundColor": "#F3F4F6",
+        "navigationBarTextStyle": "black"
       }
     },
     {
-      "path": "pages/plot/index",
+      "path": "pages/alarm/index",
       "style": {
-        "navigationBarTitleText": "地块管理"
+        "navigationBarTitleText": "告警中心",
+        "navigationBarBackgroundColor": "#F3F4F6",
+        "navigationBarTextStyle": "black"
       }
     },
     {
@@ -41,41 +45,55 @@
       "style": {
         "navigationBarTitleText": "我的"
       }
-	},
-	{
-		"path": "pages/plot/edit",
-		"style": {
-			"navigationBarTitleText": "地块编辑"
-		}
-	}
+    },
+    {
+      "path": "pages/plot/edit",
+      "style": {
+        "navigationBarTitleText": "地块编辑"
+      }
+    },
+    {
+      "path": "pages/plot/index",
+      "style": {
+        "navigationBarTitleText": "茶园详情"
+      }
+    }
   ],
   "window": {
-    "navigationBarBackgroundColor": "#1f2933",
+    "navigationBarBackgroundColor": "#10B981",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#f6f8fb",
-    "backgroundTextStyle": "light"
+    "backgroundColor": "#F3F4F6",
+    "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#6b7280",
-    "selectedColor": "#1f7a5a",
-    "borderStyle": "black",
+    "color": "#6B7280",
+    "selectedColor": "#10B981",
+    "borderStyle": "white",
     "backgroundColor": "#ffffff",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "茶园总览"
+        "text": "茶园总览",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
       },
       {
-        "pagePath": "pages/plot/index",
-        "text": "地块管理"
+        "pagePath": "pages/alarm/index",
+        "text": "告警信息",
+        "iconPath": "static/tabbar/alarm.png",
+        "selectedIconPath": "static/tabbar/alarm-active.png"
       },
       {
         "pagePath": "pages/assistant/index",
-        "text": "AI智能助手"
+        "text": "AI助手",
+        "iconPath": "static/tabbar/ai.png",
+        "selectedIconPath": "static/tabbar/ai-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "static/tabbar/user.png",
+        "selectedIconPath": "static/tabbar/user-active.png"
       }
     ]
   }

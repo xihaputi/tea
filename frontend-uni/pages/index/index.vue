@@ -1,225 +1,272 @@
 <template>
-  <view class="page">
-    <!-- 顶部筛选 -->
-    <view class="top-bar">
-      <picker mode="selector" :range="groups" @change="changeGroup">
-        <view class="top-item">
-          {{ groups[currentGroup] }}
-          <text class="arrow">▼</text>
-        </view>
-      </picker>
-      <view class="top-item tag-active">全部</view>
-      <picker mode="selector" :range="filters" @change="changeFilter">
-        <view class="top-item">
-          筛选
-          <text class="arrow">▼</text>
-        </view>
-      </picker>
+  <view class="page-container">
+    <!-- Top Header -->
+    <view class="dashboard-header">
+      <view class="header-content">
+        <text class="greeting">早上好，管理员</text>
+        <text class="title-lg text-white">茶园总览</text>
+      </view>
+      <view class="weather-widget">
+        <text class="weather-temp">24°C</text>
+        <text class="weather-desc">多云</text>
+      </view>
     </view>
 
-    <!-- 茶园卡片 -->
-    <view v-for="item in gardens" :key="item.id" class="card">
-      <view class="card-header">
-        <text class="card-title">{{ item.name }}</text>
-        <view class="header-icons">
-          <text class="icon-btn">⟳</text>
-          <!-- <text class="icon-btn">✎</text> -->
-          <text class="icon-btn">🔖</text>
+    <!-- Stats Grid -->
+    <view class="stats-grid">
+      <view class="stat-card">
+        <text class="stat-val">{{ stats.garden_count }}</text>
+        <text class="stat-label">茶园总数</text>
+      </view>
+      <view class="stat-card">
+        <text class="stat-val">{{ stats.device_online_count }}</text>
+        <text class="stat-label">设备在线</text>
+      </view>
+      <view class="stat-card" :class="{ warning: stats.alarm_count > 0 }">
+        <text class="stat-val">{{ stats.alarm_count }}</text>
+        <text class="stat-label">当前告警</text>
+      </view>
+    </view>
+
+    <!-- Garden List -->
+    <view class="section-title">
+      <text class="title-md">我的茶园</text>
+      <text class="text-sub">全部 ></text>
+    </view>
+
+    <view class="garden-list">
+      <view v-for="item in gardens" :key="item.id" class="card garden-card" @click="goDetail(item.id)">
+        <image class="garden-cover" :src="item.image" mode="aspectFill"></image>
+        <view class="garden-info">
+          <view class="info-header">
+            <text class="garden-name">{{ item.name }}</text>
+            <view class="tag" :class="item.status === 'normal' ? 'tag-primary' : 'tag-warn'">
+              {{ item.status === 'normal' ? '正常运行' : '需关注' }}
+            </view>
+          </view>
+          
+          <view class="info-metrics">
+            <view class="metric-item">
+              <text class="metric-val">{{ item.area }}亩</text>
+              <text class="metric-label">面积</text>
+            </view>
+            <view class="metric-divider"></view>
+            <view class="metric-item">
+              <text class="metric-val">{{ item.devices }}台</text>
+              <text class="metric-label">设备</text>
+            </view>
+          </view>
+          
+          <view v-if="item.lastAlert" class="alert-preview">
+            <text class="alert-icon">⚠️</text>
+            <text class="alert-text">{{ item.lastAlert }}</text>
+          </view>
         </view>
-      </view>
-
-      <view class="row">
-        <text>编号：{{ item.code }} · 管理员：{{ item.manager }}</text>
-      </view>
-
-      <view class="row">
-        <text>面积：{{ item.area }} 亩</text>
-        <text>地块数量：{{ item.plots }} 块</text>
-      </view>
-
-      <view class="row">
-        <text>装备设备：{{ item.devices }} 台</text>
-        <text>在线：{{ item.online }} 台 · 离线：{{ item.offline }} 台</text>
-      </view>
-
-      <view class="row">
-        <view class="status">
-          <text class="dot" :class="statusDot(item.status)"></text>
-          <text>状态：{{ statusText(item.status) }}</text>
-        </view>
-        <text class="update">最近预警：{{ item.lastAlert }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script>
+import { getDashboardStats } from '@/api/dashboard.js';
+import { getGardenList } from '@/api/garden.js';
+
 export default {
   data() {
     return {
-      groups: ['当前集团 / 合作社'],
-      currentGroup: 0,
-      filters: ['全部', '正常', '预警', '告警'],
-      currentFilter: 0,
-      gardens: [
-        {
-          id: 1,
-          name: '茶园 A',
-          code: 'TY-001',
-          manager: '张三',
-          area: 45.2,
-          plots: 10,
-          devices: 18,
-          online: 16,
-          offline: 2,
-          status: 'normal',
-          lastAlert: '2小时前·浇水 (1块地)',
-        },
-        {
-          id: 2,
-          name: '茶园 B',
-          code: 'TY-002',
-          manager: '李四',
-          area: 50.0,
-          plots: 10,
-          devices: 15,
-          online: 12,
-          offline: 3,
-          status: 'normal',
-          lastAlert: '3小时前·施肥 (1块地)',
-        },
-        {
-          id: 3,
-          name: '茶园 C',
-          code: 'TY-003',
-          manager: '王五',
-          area: 38.5,
-          plots: 8,
-          devices: 12,
-          online: 10,
-          offline: 2,
-          status: 'warn',
-          lastAlert: '1小时前·检查虫害 (1块地)',
-        },
-      ],
+      stats: {
+        garden_count: 0,
+        device_online_count: 0,
+        alarm_count: 0
+      },
+      gardens: [],
+      loading: false
     };
   },
-  methods: {
-    changeGroup(e) {
-      this.currentGroup = e.detail.value;
-    },
-    changeFilter(e) {
-      this.currentFilter = e.detail.value;
-    },
-    statusText(status) {
-      if (status === 'warn') return '预警';
-      if (status === 'alert') return '告警';
-      return '正常';
-    },
-    statusDot(status) {
-      if (status === 'warn') return 'dot-warn';
-      if (status === 'alert') return 'dot-alert';
-      return 'dot-normal';
-    },
+  onLoad() {
+    this.loadData();
   },
+  onPullDownRefresh() {
+    this.loadData();
+  },
+  methods: {
+    async loadData() {
+      this.loading = true;
+      try {
+        const [statsRes, gardensRes] = await Promise.all([
+          getDashboardStats(),
+          getGardenList({ page: 1, size: 100 })
+        ]);
+        
+        this.stats = statsRes;
+        this.gardens = gardensRes.list.map(item => ({
+          ...item,
+          devices: item.totalCount || 0,
+          image: item.image_path ? (this.$baseUrl + item.image_path) : '/static/default_garden.jpg', // Handle image path
+          lastAlert: item.alarmCount > 0 ? `${item.alarmCount}条告警待处理` : null
+        }));
+        
+      } catch (e) {
+        console.error(e);
+        uni.showToast({ title: '加载失败', icon: 'none' });
+      } finally {
+        this.loading = false;
+        uni.stopPullDownRefresh();
+      }
+    },
+    goDetail(id) {
+      // Navigate to Garden Detail (Plot List)
+      uni.navigateTo({ url: `/pages/plot/index?garden_id=${id}` });
+    }
+  }
 };
 </script>
 
-<style lang="scss">
-.page {
-  padding: 24rpx;
-  background: #f6f8fb;
-}
+<style lang="scss" scoped>
+@import "@/uni.scss";
 
-.top-bar {
+.dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20rpx;
-  color: #167c4a;
-  font-weight: 600;
+  margin-bottom: 32rpx;
 }
 
-.top-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 8rpx 0;
-}
-
-.tag-active {
-  border-bottom: 2rpx solid #167c4a;
-}
-
-.arrow {
+.greeting {
   font-size: 24rpx;
+  color: $text-sub;
+  margin-bottom: 8rpx;
+  display: block;
 }
 
-.card {
-  background: #fafff8;
-  border: 2rpx solid #c7ebd6;
-  border-radius: 20rpx;
+.weather-widget {
+  text-align: right;
+}
+
+.weather-temp {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: $primary;
+  display: block;
+}
+
+.weather-desc {
+  font-size: 24rpx;
+  color: $text-sub;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20rpx;
+  margin-bottom: 40rpx;
+}
+
+.stat-card {
+  background: #fff;
   padding: 24rpx;
-  margin-bottom: 20rpx;
-  box-shadow: 0 4rpx 10rpx rgba(22, 124, 74, 0.08);
+  border-radius: 20rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.03);
+  
+  &.warning {
+    background: #FEF3C7;
+    .stat-val { color: #D97706; }
+  }
 }
 
-.card-header {
+.stat-val {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: $text-main;
+  margin-bottom: 8rpx;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: $text-sub;
+}
+
+.section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16rpx;
+  margin-bottom: 24rpx;
 }
 
-.card-title {
+.garden-card {
+  padding: 0; // Reset default padding
+  overflow: hidden;
+}
+
+.garden-cover {
+  width: 100%;
+  height: 240rpx;
+  background-color: #E5E7EB;
+}
+
+.garden-info {
+  padding: 24rpx;
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.garden-name {
   font-size: 32rpx;
   font-weight: 700;
+  color: $text-main;
 }
 
-.header-icons {
+.info-metrics {
   display: flex;
-  gap: 20rpx;
-  color: #167c4a;
+  justify-content: space-around;
+  align-items: center;
+  margin-bottom: 24rpx;
 }
 
-.icon-btn {
-  font-size: 30rpx;
+.metric-item {
+  text-align: center;
 }
 
-.row {
-  display: flex;
-  justify-content: space-between;
-  margin: 8rpx 0;
-  color: #2f3c3b;
-  font-size: 26rpx;
+.metric-val {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text-main;
 }
 
-.status {
+.metric-label {
+  font-size: 22rpx;
+  color: $text-sub;
+}
+
+.metric-divider {
+  width: 2rpx;
+  height: 24rpx;
+  background: #E5E7EB;
+}
+
+.alert-preview {
+  background: #FEF2F2;
+  padding: 16rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   gap: 12rpx;
 }
 
-.dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-}
-
-.dot-normal {
-  background: #16a34a;
-}
-
-.dot-warn {
-  background: #f59e0b;
-}
-
-.dot-alert {
-  background: #ef4444;
-}
-
-.update {
-  color: #4b5563;
+.alert-icon {
   font-size: 24rpx;
+}
+
+.alert-text {
+  font-size: 24rpx;
+  color: #DC2626;
 }
 </style>

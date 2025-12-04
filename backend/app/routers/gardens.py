@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Plot, TeaGarden
-from ..schemas import PageResult, PlotCreate, PlotOut, TeaGardenCreate, TeaGardenOut, TeaGardenUpdate
+from ..schemas import DeviceOut, PageResult, PlotCreate, PlotOut, TeaGardenCreate, TeaGardenOut, TeaGardenUpdate
 
 router = APIRouter(prefix="/tea-gardens", tags=["tea-gardens"])
 
@@ -141,3 +141,14 @@ def create_plot(garden_id: int, payload: PlotCreate, db: Session = Depends(get_d
     db.commit()
     db.refresh(plot)
     return plot
+    
+    
+@router.get("/{garden_id}/devices", response_model=list[DeviceOut])
+def list_garden_devices(garden_id: int, db: Session = Depends(get_db)):
+    """
+    获取茶园下的设备列表
+    Get device list for a tea garden
+    """
+    from ..models import Device
+    from ..schemas import DeviceOut
+    return db.query(Device).filter(Device.garden_id == garden_id).all()

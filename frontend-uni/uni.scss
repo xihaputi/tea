@@ -1,53 +1,101 @@
-$primary: #1f7a5a;
-$accent: #f5a524;
-$text: #1f2933;
-$muted: #6b7280;
+// Premium Color Palette (Teal/Green Theme)
+$primary: #10B981;       // Emerald 500
+$primary-dark: #059669;  // Emerald 600
+$primary-light: #D1FAE5; // Emerald 100
+$accent: #F59E0B;        // Amber 500
+$danger: #EF4444;        // Red 500
+$text-main: #111827;     // Gray 900
+$text-sub: #6B7280;      // Gray 500
+$bg-page: #F3F4F6;       // Gray 100
+$bg-card: #FFFFFF;
 
-.card {
-  background: #fff;
-  border-radius: 12rpx;
-  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.05);
-  padding: 24rpx;
+// Mixins
+@mixin card-premium {
+  background: $bg-card;
+  border-radius: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  padding: 32rpx;
   margin-bottom: 24rpx;
 }
 
-.title {
-  font-size: 34rpx;
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin text-truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Global Classes
+.page-container {
+  min-height: 100vh;
+  background-color: $bg-page;
+  padding: 24rpx;
+  padding-bottom: 120rpx; // Space for tabbar
+}
+
+.card {
+  @include card-premium;
+}
+
+.title-lg {
+  font-size: 36rpx;
   font-weight: 700;
-  color: $text;
+  color: $text-main;
 }
 
-.subtitle {
-  color: $muted;
-  font-size: 26rpx;
-}
-
-.pill {
-  display: inline-block;
-  padding: 8rpx 16rpx;
-  border-radius: 999rpx;
-  font-size: 24rpx;
+.title-md {
+  font-size: 32rpx;
   font-weight: 600;
-  color: #fff;
+  color: $text-main;
 }
 
-.pill-optimal {
-  background: $primary;
+.text-sub {
+  font-size: 26rpx;
+  color: $text-sub;
 }
 
-.pill-water {
-  background: $accent;
-}
-
-.pill-drain {
-  background: #ef4444;
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  
+  &.tag-primary {
+    background: $primary-light;
+    color: $primary-dark;
+  }
+  
+  &.tag-warn {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+  
+  &.tag-danger {
+    background: #FEE2E2;
+    color: #DC2626;
+  }
 }
 
 .btn-primary {
-  background: $primary;
+  background: linear-gradient(135deg, $primary, $primary-dark);
   color: #fff;
-  border-radius: 10rpx;
-  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
   text-align: center;
+  font-weight: 600;
+  font-size: 30rpx;
+  box-shadow: 0 4rpx 12rpx rgba(16, 185, 129, 0.3);
+  
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
 }
 
