@@ -119,6 +119,12 @@ app.include_router(chat.router)        # 智能问答 / AI Chat
 app.include_router(chat.router)        # 智能问答 / AI Chat
 app.include_router(rules.router)       # 规则引擎 / Rule engine
 app.include_router(emqx.router)        # EMQX 认证 / EMQX Auth
+from .routers import alarms
+app.include_router(alarms.router)      # 告警管理 / Alarm management
+from .routers import users
+app.include_router(users.router)       # 用户管理 / User management
+from .routers import dashboard
+app.include_router(dashboard.router)   # 仪表盘 / Dashboard
 
 @app.get("/")
 def root():
@@ -127,5 +133,5 @@ def root():
     Root endpoint for testing
     """
     return {"message": "Welcome to Tea Brain API"}
-
+# Trigger reload for user management
 

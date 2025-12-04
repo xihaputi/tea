@@ -28,7 +28,6 @@
             <div class="weather-widget">
               <div class="temp">{{ weather.temperature }}°C</div>
               <div class="desc">{{ weather.weather }} | 湿度 {{ weather.humidity }}% | 风速 {{ weather.windPower }}级</div>
-              <div style="font-size: 10px; color: red; margin-top: 5px;">{{ debugMsg }}</div>
             </div>
           </div>
         </div>
@@ -52,7 +51,12 @@
       <!-- 右侧：数据与分析 -->
       <el-col :span="8">
         <div class="card mb-4">
-          <div class="card-title">环境数据</div>
+          <div class="card-title">
+            环境数据
+            <span v-if="lastUpdated" style="font-size: 12px; color: #999; font-weight: normal; margin-left: 10px;">
+                更新于 {{ lastUpdated }}
+            </span>
+          </div>
           <div class="sensor-grid" v-if="sensorList.length > 0">
             <div class="sensor-item" v-for="(sensor, index) in sensorList" :key="index">
               <div class="label">{{ sensor.label }}</div>
@@ -77,13 +81,15 @@
         <div class="card">
           <div class="card-title">AI 农事建议</div>
           <div class="ai-advice">
-            <div class="advice-item warning">
-              <el-icon><Warning /></el-icon>
-              <span>检测到近期湿度较高，请注意防范茶饼病。</span>
-            </div>
-            <div class="advice-item info">
-              <el-icon><InfoFilled /></el-icon>
-              <span>适宜进行除草作业。</span>
+            <div 
+                v-for="(item, index) in aiAdvice" 
+                :key="index"
+                class="advice-item" 
+                :class="item.type"
+            >
+              <el-icon v-if="item.type === 'warning'"><Warning /></el-icon>
+              <el-icon v-else><InfoFilled /></el-icon>
+              <span>{{ item.text }}</span>
             </div>
           </div>
         </div>
@@ -116,6 +122,10 @@ const weather = ref({
 
 // 传感器数据
 const sensorList = ref([])
+const lastUpdated = ref('')
+const aiAdvice = ref([
+    { type: 'info', text: '正在分析环境数据...' }
+])
 
 const fetchDetail = async () => {
   loading.value = true
@@ -136,29 +146,22 @@ const fetchDetail = async () => {
   }
 }
 
-const debugMsg = ref('')
-
 const fetchWeather = (lat, lng) => {
   if (!window.AMap) {
-    debugMsg.value = '等待地图加载...'
     setTimeout(() => fetchWeather(lat, lng), 500)
     return
   }
   
-  debugMsg.value = '加载插件中...'
   window.AMap.plugin(['AMap.Geocoder', 'AMap.Weather'], function() {
-    debugMsg.value = '插件加载完成，获取地址...'
     // 1. 先通过经纬度获取城市/区域编码
     const geocoder = new window.AMap.Geocoder()
     geocoder.getAddress([lng, lat], (status, result) => {
       console.log('Geocoder status:', status, result)
       if (status === 'complete' && result.regeocode) {
         const adcode = result.regeocode.addressComponent.adcode
-        debugMsg.value = `获取地址成功: ${adcode}，查询天气...`
         queryWeather(adcode)
       } else {
         console.warn('Geocode failed:', result)
-        debugMsg.value = `地址解析失败(${status})，尝试查询默认城市(杭州)天气...`
         queryWeather('330100') // Fallback to Hangzhou
       }
     })
@@ -176,23 +179,15 @@ const queryWeather = (adcode) => {
           humidity: data.humidity,
           windPower: data.windPower
         }
-        if (adcode === '330100') {
-             debugMsg.value = '已显示默认城市(杭州)天气 (定位解析失败)'
-        } else {
-             debugMsg.value = '天气更新成功'
-        }
       } else {
         const errorInfo = err.info || '未知错误'
         if (errorInfo === 'USERKEY_PLAT_NOMATCH' || errorInfo === 'INVALID_USER_SCODE') {
-            debugMsg.value = 'API Key 配置问题(缺安全密钥或类型错误)，已切换模拟数据'
             weather.value = {
               temperature: '26',
               weather: '晴',
               humidity: '45',
               windPower: '3'
             }
-        } else {
-            debugMsg.value = '天气查询失败: ' + errorInfo
         }
       }
     })
@@ -201,7 +196,7 @@ const queryWeather = (adcode) => {
 const fetchGardenDevices = async () => {
   try {
     // 获取该茶园下的所有设备
-    const res = await getDeviceList({ garden_id: gardenId, size: 100 })
+    const res = await getDeviceList({ gardenId: gardenId, size: 100 })
     const devices = res.list || []
     
     const allSensors = []
@@ -256,9 +251,45 @@ const fetchGardenDevices = async () => {
     
     await Promise.all(promises)
     sensorList.value = allSensors
+    lastUpdated.value = new Date().toLocaleTimeString()
+    generateAiAdvice(allSensors)
   } catch (error) {
     console.error(error)
   }
+}
+
+const generateAiAdvice = (sensors) => {
+    const advice = []
+    
+    // 1. 湿度分析
+    const humiditySensor = sensors.find(s => s.label.includes('湿度'))
+    if (humiditySensor) {
+        const val = parseFloat(humiditySensor.value)
+        if (val > 80) {
+            advice.push({ type: 'warning', text: `检测到${humiditySensor.label}较高(${val}%)，请注意防范茶饼病。` })
+        } else if (val < 40) {
+            advice.push({ type: 'warning', text: `检测到${humiditySensor.label}较低(${val}%)，请注意适时灌溉。` })
+        }
+    }
+
+    // 2. 温度分析
+    const tempSensor = sensors.find(s => s.label.includes('温度'))
+    if (tempSensor) {
+        const val = parseFloat(tempSensor.value)
+        if (val > 30) {
+             advice.push({ type: 'warning', text: `气温较高(${val}℃)，请注意茶树遮阳防晒。` })
+        } else if (val < 5) {
+             advice.push({ type: 'warning', text: `气温较低(${val}℃)，请注意防冻害。` })
+        }
+    }
+    
+    // 3. 默认建议
+    if (advice.length === 0) {
+        advice.push({ type: 'info', text: '当前环境适宜，建议进行常规巡园。' })
+        advice.push({ type: 'info', text: '适宜进行除草作业。' })
+    }
+    
+    aiAdvice.value = advice
 }
 
 const initMap = (lat, lng) => {
@@ -281,8 +312,25 @@ const initMap = (lat, lng) => {
   map.add(marker)
 }
 
+import { onUnmounted } from 'vue'
+
+let pollingTimer = null
+
 onMounted(() => {
   fetchDetail()
+  // 开启轮询，每5秒刷新一次设备数据
+  pollingTimer = setInterval(() => {
+    if (gardenId) {
+        fetchGardenDevices()
+    }
+  }, 5000)
+})
+
+onUnmounted(() => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
 })
 </script>
 

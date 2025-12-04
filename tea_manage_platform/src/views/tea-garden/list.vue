@@ -113,8 +113,8 @@
 
     <!-- 绑定设备弹窗 -->
     <el-dialog v-model="bindDialogVisible" title="绑定设备" width="600px">
-      <div class="mb-4 text-gray-500">请选择要绑定到该茶园的设备（仅显示未绑定设备）：</div>
-      <el-table :data="unboundDevices" style="width: 100%" height="300" @selection-change="val => selectedDevices = val.map(v => v.id)">
+      <div class="mb-4 text-gray-500">请选择要绑定到该茶园的设备：</div>
+      <el-table ref="bindTableRef" :data="unboundDevices" style="width: 100%" height="300" @selection-change="val => selectedDevices = val.map(v => v.id)">
         <el-table-column type="selection" width="55" />
         <el-table-column prop="name" label="设备名称" />
         <el-table-column prop="sn" label="序列号" />
@@ -204,6 +204,7 @@ const bindLoading = ref(false)
 const unboundDevices = ref([])
 const selectedDevices = ref([])
 const currentBindGardenId = ref(null)
+const bindTableRef = ref(null)
 
 const fetchData = async () => {
   loading.value = true
@@ -318,36 +319,62 @@ const handleDelete = (row) => {
 }
 
 // 绑定设备逻辑
+// 绑定设备逻辑
 const handleBindDevice = async (row) => {
   currentBindGardenId.value = row.id
   bindDialogVisible.value = true
   selectedDevices.value = []
-  // 获取未绑定设备列表
+  // 获取所有设备列表
   try {
-    const res = await getDeviceList({ gardenId: -1, page: 1, size: 100 })
+    const res = await getDeviceList({ page: 1, size: 1000 })
     unboundDevices.value = res.list || []
+    
+    // 预选中已绑定的设备
+    // 需要等待 DOM 更新后操作表格
+    setTimeout(() => {
+        if (bindTableRef.value) {
+            bindTableRef.value.clearSelection()
+            unboundDevices.value.forEach(device => {
+                if (device.garden_id === row.id) {
+                    bindTableRef.value.toggleRowSelection(device, true)
+                }
+            })
+        }
+    }, 100)
   } catch (error) {
     console.error(error)
   }
 }
 
 const submitBindDevice = async () => {
-  if (selectedDevices.value.length === 0) {
-    return ElMessage.warning('请选择至少一个设备')
-  }
   bindLoading.value = true
   try {
-    // 批量更新设备 garden_id
-    const promises = selectedDevices.value.map(deviceId => 
-      updateDevice(deviceId, { garden_id: currentBindGardenId.value })
-    )
-    await Promise.all(promises)
-    ElMessage.success('绑定成功')
+    const promises = []
+    unboundDevices.value.forEach(device => {
+        const isSelected = selectedDevices.value.includes(device.id)
+        const isOriginallyBound = device.garden_id === currentBindGardenId.value
+        
+        if (isSelected && !isOriginallyBound) {
+            // 新选中：绑定到当前茶园
+            promises.push(updateDevice(device.id, { garden_id: currentBindGardenId.value }))
+        } else if (!isSelected && isOriginallyBound) {
+            // 取消选中：解绑
+            promises.push(updateDevice(device.id, { garden_id: null }))
+        }
+    })
+    
+    if (promises.length > 0) {
+        await Promise.all(promises)
+        ElMessage.success('设备绑定状态已更新')
+    } else {
+        ElMessage.info('未做任何修改')
+    }
+    
     bindDialogVisible.value = false
     fetchData() // 刷新列表以更新在线设备数等统计
   } catch (error) {
     console.error(error)
-    ElMessage.error('部分设备绑定失败，请重试')
+    ElMessage.error('操作失败，请重试')
   } finally {
     bindLoading.value = false
   }

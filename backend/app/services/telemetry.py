@@ -37,6 +37,10 @@ def save_telemetry(sn: str, data: Dict[str, Any]):
         
         db.commit()
         print(f"[MQTT] Data saved for device: {device.name} ({sn})")
+        
+        # 4. 触发规则引擎
+        from .rule_engine import evaluate_telemetry
+        evaluate_telemetry(db, device.id, data)
 
     except Exception as e:
         print(f"[MQTT] Error saving telemetry: {e}")

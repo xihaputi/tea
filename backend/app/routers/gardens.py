@@ -38,13 +38,19 @@ def list_gardens(
         device_count = len(garden.devices)
         online_count = len([d for d in garden.devices if d.status == 'online'])
         
-        # 转换为 Schema 对象 (Pydantic 会自动处理 extra fields，或者我们需要手动构造)
-        # 由于 TeaGardenOut 是 Pydantic 模型，我们可以用 from_orm 并手动赋值
+        # Calculate active alarms
+        alarm_count = 0
+        for device in garden.devices:
+            alarm_count += len([a for a in device.alarms if a.status == 'active'])
+            
         out = TeaGardenOut.from_orm(garden)
         out.plotCount = plot_count
         out.totalCount = device_count
         out.onlineCount = online_count
+        out.alarmCount = alarm_count
         result_list.append(out)
+        
+
         
     return PageResult(list=result_list, total=total)
 

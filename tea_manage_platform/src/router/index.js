@@ -73,6 +73,18 @@ const routes = [
     ],
   },
   {
+    path: "/alarm",
+    component: Layout,
+    children: [
+      {
+        path: "index",
+        component: () => import("@/views/alarm/index.vue"),
+        meta: { title: "告警记录", requiresAuth: true },
+      },
+    ],
+  },
+  /*
+  {
     path: "/rule-engine",
     component: Layout,
     children: [
@@ -80,6 +92,19 @@ const routes = [
         path: "index",
         component: () => import("@/views/rule-engine/index.vue"),
         meta: { title: "规则引擎", requiresAuth: true },
+      },
+    ],
+  },
+  */
+  {
+    path: "/system",
+    component: Layout,
+    meta: { title: "系统管理", requiresAuth: true },
+    children: [
+      {
+        path: "user",
+        component: () => import("@/views/system/user.vue"),
+        meta: { title: "用户管理", requiresAuth: true },
       },
     ],
   },

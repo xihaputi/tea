@@ -1,10 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, Table
 from sqlalchemy.orm import relationship
 
 from .database import Base
 
+# 用户-茶园关联表
+user_gardens = Table(
+    "user_gardens",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("garden_id", Integer, ForeignKey("tea_gardens.id"), primary_key=True),
+)
 
 class User(Base):
     """
@@ -19,6 +26,9 @@ class User(Base):
     name = Column(String(100), nullable=False)      # 姓名 / Name
     avatar = Column(String(255), nullable=True)     # 头像 URL / Avatar URL
     roles = Column(String(255), nullable=True)      # 角色（逗号分隔） / Roles (comma separated)
+    permissions = Column(Text, nullable=True)       # 权限列表 (JSON) / Permissions (JSON)
+
+    gardens = relationship("TeaGarden", secondary=user_gardens, backref="users")
 
 
 class GardenPlot(Base):
@@ -109,6 +119,7 @@ class TeaGarden(Base):
     latitude = Column(Float, nullable=True)         # 纬度 / Latitude
     longitude = Column(Float, nullable=True)        # 经度 / Longitude
     camera_url = Column(String(255), nullable=True) # 摄像头地址 / Camera URL
+    image_path = Column(String(255), nullable=True) # 茶园封面图 / Garden Cover Image
     status = Column(String(50), default="active")   # 状态 / Status
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
@@ -165,6 +176,7 @@ class Device(Base):
     sensor_config = Column(Text, nullable=True) # 传感器配置 (JSON) / Sensor Config
 
     garden = relationship("TeaGarden", back_populates="devices")
+    alarms = relationship("Alarm", back_populates="device")
 
 
 class Telemetry(Base):
@@ -190,8 +202,39 @@ class Rule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(150), nullable=False)      # 规则名称 / Rule Name
-    condition = Column(Text, nullable=True)         # 触发条件 / Trigger Condition
-    actions = Column(Text, nullable=True)           # 执行动作 / Actions
-    enabled = Column(Boolean, default=True)         # 是否启用 / Enabled
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True) # 关联产品 / Related Product
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=True)   # 关联设备（可选）/ Related Device (Optional)
+    
+    # 简单规则定义
+    input_key = Column(String(50), nullable=True)   # 监控字段 (e.g. temperature)
+    operator = Column(String(10), nullable=True)    # 操作符 (>, <, =, >=, <=)
+    threshold = Column(Float, nullable=True)        # 阈值
+    
+    condition = Column(Text, nullable=True)         # 复杂条件（保留字段）
+    actions = Column(Text, nullable=True)           # 执行动作 (JSON)
+    enabled = Column(Boolean, default=True)         # 是否启用
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Alarm(Base):
+    """
+    告警模型
+    Alarm Model
+    """
+    __tablename__ = "alarms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    device_id = Column(Integer, ForeignKey("devices.id"), nullable=False)
+    rule_id = Column(Integer, ForeignKey("rules.id"), nullable=True)
+    
+    severity = Column(String(20), default="warning") # 告警级别: info, warning, critical
+    content = Column(String(255), nullable=False)    # 告警内容
+    status = Column(String(20), default="active")    # 状态: active, acknowledged, cleared
+    
+    created_at = Column(DateTime, default=datetime.utcnow) # 发生时间
+    updated_at = Column(DateTime, default=datetime.utcnow) # 更新时间
+    cleared_at = Column(DateTime, nullable=True)           # 清除时间
+
+    device = relationship("Device", back_populates="alarms")
+    rule = relationship("Rule")

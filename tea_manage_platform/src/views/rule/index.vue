@@ -13,12 +13,15 @@
         <el-table-column prop="name" label="规则名称" width="200" />
         <el-table-column label="触发条件 (If)" min-width="250">
            <template #default="{row}">
-             <el-tag effect="plain">{{ row.condition }}</el-tag>
+             <el-tag effect="plain" v-if="row.input_key">
+                {{ row.input_key }} {{ row.operator }} {{ row.threshold }}
+             </el-tag>
+             <span v-else>{{ row.condition }}</span>
            </template>
         </el-table-column>
         <el-table-column label="执行动作 (Then)" min-width="250">
            <template #default="{row}">
-             <el-tag type="warning" v-for="act in row.actions" :key="act" class="mr-1">{{ act }}</el-tag>
+             <el-tag type="warning">生成系统告警</el-tag>
            </template>
         </el-table-column>
         <el-table-column prop="enabled" label="启用" width="100">
@@ -31,52 +34,75 @@
 
     <!-- 新建规则弹窗 -->
     <el-dialog v-model="dialogVisible" title="配置规则" width="600px">
-      <el-form label-width="100px">
-        <el-form-item label="规则名称"><el-input placeholder="例如：土壤缺水告警" /></el-form-item>
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="规则名称"><el-input v-model="form.name" placeholder="例如：土壤缺水告警" /></el-form-item>
+        <el-form-item label="关联产品">
+          <el-select v-model="form.product_id" placeholder="选择产品类型" @change="handleProductChange">
+             <el-option v-for="p in products" :key="p.id" :label="p.label" :value="p.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="关联设备">
-          <el-select placeholder="选择产品类型"><el-option label="土壤传感器" value="1"/></el-select>
+          <el-select v-model="form.device_id" placeholder="可选：指定特定设备" clearable>
+             <el-option v-for="d in devices" :key="d.id" :label="d.name" :value="d.id" />
+          </el-select>
+          <div class="text-gray-400 text-xs">不选则应用于该产品下的所有设备</div>
         </el-form-item>
         
         <el-divider content-position="left">触发条件</el-divider>
         <el-form-item label="当">
           <el-row :gutter="10">
-            <el-col :span="8"><el-select placeholder="字段" model-value="soil_moisture"/></el-col>
-            <el-col :span="6"><el-select placeholder="操作符" model-value="<" /></el-col>
-            <el-col :span="8"><el-input placeholder="阈值" model-value="20" /></el-col>
+            <el-col :span="8"><el-input v-model="form.input_key" placeholder="字段 (如 temperature)"/></el-col>
+            <el-col :span="6">
+                <el-select v-model="form.operator" placeholder="操作符">
+                    <el-option label=">" value=">" />
+                    <el-option label="<" value="<" />
+                    <el-option label="=" value="=" />
+                    <el-option label=">=" value=">=" />
+                    <el-option label="<=" value="<=" />
+                </el-select>
+            </el-col>
+            <el-col :span="8"><el-input v-model.number="form.threshold" placeholder="阈值" /></el-col>
           </el-row>
-          <div class="text-gray-400 text-xs mt-1">持续时长 > 10 分钟</div>
         </el-form-item>
 
         <el-divider content-position="left">执行动作</el-divider>
         <el-form-item label="动作">
           <el-checkbox-group v-model="actionList">
-            <el-checkbox label="生成系统告警" />
-            <el-checkbox label="发送小程序通知" />
+            <el-checkbox label="生成系统告警" disabled checked />
             <el-checkbox label="发送短信" />
-            <el-checkbox label="设备控制(开水泵)" />
           </el-checkbox-group>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary">保存</el-button>
+        <el-button type="primary" @click="handleSubmit">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getRuleList, enableRule } from '@/api/rule'
+import { ref, reactive, onMounted } from 'vue'
+import { getRuleList, createRule, enableRule } from '@/api/rule'
+import { getProductGroups, getDeviceList } from '@/api/device'
 import { ElMessage } from 'element-plus'
 
 const dialogVisible = ref(false)
-const actionList = ref([])
+const actionList = ref(['生成系统告警'])
 const rules = ref([])
-const loading = ref(false)
+const products = ref([])
+const devices = ref([])
+
+const form = reactive({
+    name: '',
+    product_id: null,
+    device_id: null,
+    input_key: '',
+    operator: '>',
+    threshold: null
+})
 
 const fetchRules = async () => {
-  loading.value = true
   try {
     const res = await getRuleList()
     if (res) {
@@ -84,9 +110,29 @@ const fetchRules = async () => {
     }
   } catch (error) {
     console.error(error)
-  } finally {
-    loading.value = false
   }
+}
+
+const fetchProducts = async () => {
+    const res = await getProductGroups()
+    products.value = res || []
+}
+
+const handleProductChange = async (val) => {
+    form.device_id = null
+    const res = await getDeviceList({ productId: val, size: 100 })
+    devices.value = res.list || []
+}
+
+const handleSubmit = async () => {
+    try {
+        await createRule(form)
+        ElMessage.success('规则创建成功')
+        dialogVisible.value = false
+        fetchRules()
+    } catch (error) {
+        console.error(error)
+    }
 }
 
 const handleSwitchChange = async (row) => {
@@ -101,5 +147,6 @@ const handleSwitchChange = async (row) => {
 
 onMounted(() => {
   fetchRules()
+  fetchProducts()
 })
 </script>

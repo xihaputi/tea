@@ -2,6 +2,7 @@ import uuid
 import base64
 import io
 import random
+import json
 from typing import Optional
 from datetime import datetime, timedelta
 
@@ -63,14 +64,15 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """
     用户登录接口（已去除验证码，固定账号 admin/admin 可用）
     """
-    # 初始化默认管理员（admin/admin）
+    # 初始化默认管理员（admin/admin123）
     if db.query(User).count() == 0:
         default_admin = User(
             username="admin",
-            password="admin",
+            password="admin123",
             name="超级管理员",
             avatar="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png",
             roles="admin",
+            permissions=json.dumps(["*"])
         )
         db.add(default_admin)
         db.commit()
@@ -85,6 +87,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         name=user.name,
         avatar=user.avatar or "",
         roles=user.roles.split(",") if user.roles else [],
+        permissions=json.loads(user.permissions) if user.permissions else []
     )
     return LoginResponse(token=f"token-{user.id}-{user.username}", userInfo=user_info)
 
@@ -106,7 +109,8 @@ def register(
         username=username,
         password=password,
         name=name,
-        roles="user" # 默认普通用户 / Default to normal user
+        roles="user", # 默认普通用户 / Default to normal user
+        permissions=json.dumps([]) # 默认无权限
     )
     db.add(new_user)
     db.commit()
@@ -164,7 +168,8 @@ def user_info(user: User = Depends(get_current_user)):
         id=user.id,
         name=user.name,
         avatar=user.avatar or "",
-        roles=user.roles.split(",") if user.roles else []
+        roles=user.roles.split(",") if user.roles else [],
+        permissions=json.loads(user.permissions) if user.permissions else []
     )
 
 @router.post("/logout")

@@ -95,6 +95,7 @@ class UserInfo(BaseModel):
     name: str
     avatar: Optional[str] = None
     roles: List[str] = []
+    permissions: List[str] = []
 
 
 class LoginResponse(BaseModel):
@@ -103,13 +104,57 @@ class LoginResponse(BaseModel):
     userInfo: UserInfo
 
 
+class UserCreate(BaseModel):
+    """用户创建模型 / User Create Model"""
+    username: str
+    password: str
+    name: str
+    roles: List[str] = []
+    garden_ids: List[int] = []
+    permissions: List[str] = []
+
+
+class UserUpdate(BaseModel):
+    """用户更新模型 / User Update Model"""
+    password: Optional[str] = None
+    name: Optional[str] = None
+    roles: List[str] = []
+    garden_ids: List[int] = []
+    permissions: List[str] = []
+
+
+class UserOut(BaseModel):
+    """用户输出模型 / User Output Model"""
+    id: int
+    username: str
+    name: str
+    roles: List[str] = []
+    permissions: List[str] = []
+    garden_ids: List[int] = []
+
+    class Config:
+        orm_mode = True
+
+
+class UserPageResult(BaseModel):
+    """用户分页结果模型 / User Page Result Model"""
+    list: List[UserOut]
+    total: int
+
+
 # Dashboard
+class ChartData(BaseModel):
+    name: str
+    value: int
+
 class DashboardStats(BaseModel):
     """仪表盘统计模型 / Dashboard Stats Model"""
-    gardenCount: int
-    deviceCount: int
-    alertCount: int
-    onlineRate: float
+    garden_count: int
+    device_count: int
+    device_online_count: int
+    alarm_count: int
+    user_count: int
+    alarm_trend: List[ChartData]
 
 
 # Tea garden
@@ -124,6 +169,7 @@ class TeaGardenCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     camera_url: Optional[str] = None
+    image_path: Optional[str] = None
 
 
 class TeaGardenUpdate(TeaGardenCreate):
@@ -142,6 +188,7 @@ class TeaGardenOut(TeaGardenCreate):
     plotCount: int = 0
     totalCount: int = 0
     onlineCount: int = 0
+    alarmCount: int = 0
 
     class Config:
         orm_mode = True
@@ -208,6 +255,11 @@ class DeviceOut(DeviceCreate):
 class RuleCreate(BaseModel):
     """规则创建模型 / Rule Create Model"""
     name: str
+    product_id: Optional[int] = None
+    device_id: Optional[int] = None
+    input_key: Optional[str] = None
+    operator: Optional[str] = None
+    threshold: Optional[float] = None
     condition: Optional[str] = None
     actions: Optional[str] = None
 
@@ -218,6 +270,31 @@ class RuleOut(RuleCreate):
     enabled: bool
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class AlarmCreate(BaseModel):
+    """告警创建模型 / Alarm Create Model"""
+    device_id: int
+    rule_id: Optional[int] = None
+    severity: str
+    content: str
+
+
+class AlarmOut(AlarmCreate):
+    """告警输出模型 / Alarm Output Model"""
+    id: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    cleared_at: Optional[datetime] = None
+    
+    # 关联信息
+    deviceName: Optional[str] = None
+    ruleName: Optional[str] = None
+    gardenName: Optional[str] = None
 
     class Config:
         orm_mode = True
