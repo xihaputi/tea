@@ -22,6 +22,7 @@
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="scope">
           <el-button link type="primary" @click="handleEdit(scope.row)">编辑</el-button>
+          <el-button link type="warning" @click="handleImpersonate(scope.row)" v-permission="['super_admin']">身份登录</el-button>
           <el-button link type="danger" @click="handleDelete(scope.row)">删除</el-button>
         </template>
       </el-table-column>
@@ -57,17 +58,22 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" placeholder="请输入姓名" />
         </el-form-item>
-        <el-form-item label="角色" prop="roles">
-          <el-select v-model="form.roles" multiple placeholder="请选择角色">
-            <el-option label="超级管理员" value="admin" />
+        
+        <el-form-item label="用户角色" prop="roles">
+          <el-select v-model="form.roles" placeholder="请选择角色" @change="handleRoleChange">
+            <el-option label="超级管理员" value="super_admin" />
+            <el-option label="普通管理员" value="admin" />
             <el-option label="普通用户" value="user" />
           </el-select>
+          <div class="form-tip text-gray-400 text-xs mt-1">
+             <div v-if="form.roles === 'super_admin'">拥有系统所有权限，无需分配茶园。</div>
+             <div v-if="form.roles === 'admin'">管理指定的茶园及所属设备。</div>
+             <div v-if="form.roles === 'user'">仅查看指定的茶园及所属设备。</div>
+          </div>
         </el-form-item>
         
-        <el-divider content-position="left">权限分配</el-divider>
-        
-        <el-form-item label="管理茶园">
-          <el-select v-model="form.garden_ids" multiple placeholder="请选择管理的茶园">
+        <el-form-item label="分配茶园" v-if="form.roles !== 'super_admin'">
+          <el-select v-model="form.garden_ids" multiple placeholder="请选择分配的茶园" style="width: 100%">
             <el-option
               v-for="item in gardenList"
               :key="item.id"
@@ -77,22 +83,7 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="功能权限">
-          <el-checkbox-group v-model="form.permissions">
-            <div class="perm-group">
-              <div class="group-title">茶园管理</div>
-              <el-checkbox label="garden:create">新建茶园</el-checkbox>
-              <el-checkbox label="garden:update">编辑茶园</el-checkbox>
-              <el-checkbox label="garden:delete">删除茶园</el-checkbox>
-            </div>
-            <div class="perm-group">
-              <div class="group-title">设备管理</div>
-              <el-checkbox label="device:create">新建设备</el-checkbox>
-              <el-checkbox label="device:update">编辑设备</el-checkbox>
-              <el-checkbox label="device:delete">删除设备</el-checkbox>
-            </div>
-          </el-checkbox-group>
-        </el-form-item>
+        <!-- 移除复杂的功能权限勾选，改为由角色自动决定 -->
 
       </el-form>
       <template #footer>
@@ -107,11 +98,13 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, impersonateUser } from '@/api/user'
 import { getTeaGardenList } from '@/api/tea-garden'
 
+const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
 const total = ref(0)
@@ -131,14 +124,14 @@ const form = reactive({
   username: '',
   password: '',
   name: '',
-  roles: [],
+  roles: 'user', // Default to single string
   garden_ids: [],
   permissions: []
 })
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }], // 仅新建时必填，逻辑在 submitForm 处理
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   roles: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
@@ -160,8 +153,8 @@ const fetchData = async () => {
 
 const fetchGardens = async () => {
   try {
-    const res = await getTeaGardenList({ page: 1, size: 100 }) // 获取所有茶园
-    gardenList.value = res.list
+    const res = await getTeaGardenList({ page: 1, size: 100 })
+    gardenList.value = res.list || []
   } catch (error) {
     console.error(error)
   }
@@ -175,7 +168,13 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   Object.assign(form, row)
-  form.password = '' // 编辑时不回显密码
+  // Convert roles array to single string for selector
+  if (row.roles && row.roles.length > 0) {
+      form.roles = row.roles[0]
+  } else {
+      form.roles = 'user'
+  }
+  form.password = ''
   dialogVisible.value = true
 }
 
@@ -195,26 +194,57 @@ const handleDelete = (row) => {
   })
 }
 
+const handleImpersonate = (row) => {
+  ElMessageBox.confirm(`确定要以 "${row.username}" 的身份登录系统吗？\n当前会话将结束。`, '身份切换', {
+    confirmButtonText: '立即切换',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await impersonateUser(row.id)
+      if (res && res.token) {
+          localStorage.setItem('tea_token', res.token)
+          localStorage.setItem('tea_roles', JSON.stringify(res.userInfo.roles || []))
+          localStorage.setItem('tea_permissions', JSON.stringify(res.userInfo.permissions || []))
+          localStorage.setItem('tea_user', JSON.stringify(res.userInfo))
+          
+          ElMessage.success('身份切换成功，正在跳转...')
+          setTimeout(() => {
+              window.location.href = '/'
+          }, 1000)
+      }
+    } catch (error) {
+      console.error(error)
+    }
+  })
+}
+
+const handleRoleChange = (val) => {
+    if (val === 'super_admin') {
+        form.garden_ids = []
+    }
+}
+
 const submitForm = async () => {
   if (!formRef.value) return
   
-  // 编辑时密码非必填
-  if (form.id) {
-    // 移除密码校验规则
-    // 简单处理：如果密码为空，则不提交密码字段
-  }
-
   await formRef.value.validate(async (valid) => {
     if (valid) {
       submitting.value = true
       try {
+        // Convert single role string back to array for backend
+        const submission = {
+            ...form,
+            roles: [form.roles]
+        }
+        
         if (form.id) {
-          const updateData = { ...form }
+          const updateData = { ...submission }
           if (!updateData.password) delete updateData.password
           await updateUser(form.id, updateData)
           ElMessage.success('更新成功')
         } else {
-          await createUser(form)
+          await createUser(submission)
           ElMessage.success('创建成功')
         }
         dialogVisible.value = false
@@ -233,7 +263,7 @@ const resetForm = () => {
   form.username = ''
   form.password = ''
   form.name = ''
-  form.roles = []
+  form.roles = 'user'
   form.garden_ids = []
   form.permissions = []
   if (formRef.value) {

@@ -38,3 +38,35 @@ export function deleteRule(id) {
         method: 'delete'
     })
 }
+
+// Sensor Status Rule API
+export function getSensorRules() {
+    return request({
+        url: '/rules/sensor',
+        method: 'get'
+    })
+}
+
+export function createSensorRule(data) {
+    return request({
+        url: '/rules/sensor',
+        method: 'post',
+        data
+    })
+}
+
+export function updateSensorRule(id, data) {
+    return request({
+        url: `/rules/sensor/${id}`,
+        method: 'put',
+        data
+    })
+}
+
+export function deleteSensorRule(id) {
+    return request({
+        url: `/rules/sensor/${id}`,
+        method: 'delete'
+    })
+}
+

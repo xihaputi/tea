@@ -3,7 +3,7 @@
     <!-- Top Header -->
     <view class="dashboard-header">
       <view class="header-content">
-        <text class="greeting">早上好，管理员</text>
+        <text class="greeting">早上好，{{ userName }}</text>
         <text class="title-lg text-white">茶园总览</text>
       </view>
       <view class="weather-widget">
@@ -80,11 +80,16 @@ export default {
         alarm_count: 0
       },
       gardens: [],
-      loading: false
+      loading: false,
+      userName: '管理员'
     };
   },
-  onLoad() {
-    this.loadData();
+  onShow() {
+      const userInfo = uni.getStorageSync('userInfo');
+      if (userInfo && (userInfo.name || userInfo.username)) {
+          this.userName = userInfo.name || userInfo.username;
+      }
+      this.loadData();
   },
   onPullDownRefresh() {
     this.loadData();

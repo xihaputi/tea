@@ -134,29 +134,7 @@ def reset_password(
     db.commit()
     return {"success": True, "msg": "密码重置成功"}
 
-def get_current_user(token: str = Header(..., alias="Authorization"), db: Session = Depends(get_db)):
-    """
-    获取当前用户的依赖函数
-    Dependency to get current user
-    """
-    # 允许 Authorization: Bearer token-xxx
-    if token.startswith("Bearer "):
-        token = token.split(" ", 1)[1]
-    if not token.startswith("token-"):
-        raise HTTPException(status_code=401, detail="无效的 Token")
-    
-    try:
-        parts = token.split("-")
-        if len(parts) < 3:
-             raise HTTPException(status_code=401, detail="无效的 Token 格式")
-        user_id = int(parts[1])
-    except:
-        raise HTTPException(status_code=401, detail="Token 解析失败")
-        
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="用户不存在")
-    return user
+from ..dependencies import get_current_user
 
 @router.get("/user/info", response_model=UserInfo)
 def user_info(user: User = Depends(get_current_user)):

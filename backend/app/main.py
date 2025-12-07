@@ -1,3 +1,10 @@
+from dotenv import load_dotenv
+import os
+
+# Load .env file from backend root (parent of app/) OR current working dir
+# Assuming running from backend/ usually.
+load_dotenv()
+
 from fastapi import FastAPI # FastAPI 框架
 from fastapi.middleware.cors import CORSMiddleware # 用于处理跨域请求
 from contextlib import asynccontextmanager  # 用于生命周期管理
@@ -97,6 +104,8 @@ app = FastAPI(
 
 # 配置 CORS 中间件，允许跨域请求
 # Configure CORS middleware to allow cross-origin requests
+# 配置 CORS 中间件，允许跨域请求
+# Configure CORS middleware to allow cross-origin requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 允许所有来源，生产环境建议限制域名 / Allow all origins, restrict in production
@@ -104,6 +113,25 @@ app.add_middleware(
     allow_methods=["*"],  # 允许所有 HTTP 方法 / Allow all HTTP methods
     allow_headers=["*"],  # 允许所有请求头 / Allow all headers
 )
+
+# 挂载静态文件目录
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Get absolute path to the directory where this file resides
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Navigate up one level if needed, or assume static is in app root? 
+# Current file is app/main.py. Working dir is backend.
+# The `static` folder is in `backend/static`.
+# So it is `../static` relative to `app/main.py` OR `static` relative to `backend`.
+# Safest is to use path relative to backend root.
+
+backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+static_dir = os.path.join(backend_root, "static")
+
+# Ensure static directory exists
+os.makedirs(os.path.join(static_dir, "gardens"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # 注册路由模块
 # Register router modules
@@ -125,6 +153,8 @@ from .routers import users
 app.include_router(users.router)       # 用户管理 / User management
 from .routers import dashboard
 app.include_router(dashboard.router)   # 仪表盘 / Dashboard
+from .routers import tasks
+app.include_router(tasks.router)       # 计划任务 / Scheduled Tasks
 
 @app.get("/")
 def root():

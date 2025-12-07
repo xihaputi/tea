@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Alarm, Device, Rule
+from ..models import Alarm, Device, Rule, User
 from ..schemas import AlarmOut
+from ..dependencies import get_current_user
 
 router = APIRouter(prefix="/alarms", tags=["alarms"])
 
@@ -42,13 +43,19 @@ def list_alarms(
                 out.gardenName = item.device.garden.name
         if item.rule:
             out.ruleName = item.rule.name
+        if item.handler:
+            out.handlerName = item.handler.name # 获取处理人姓名
         result.append(out)
         
     return {"list": result, "total": total}
 
 
 @router.put("/{alarm_id}/ack")
-def acknowledge_alarm(alarm_id: int, db: Session = Depends(get_db)):
+def acknowledge_alarm(
+    alarm_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     确认告警
     Acknowledge alarm
@@ -59,12 +66,17 @@ def acknowledge_alarm(alarm_id: int, db: Session = Depends(get_db)):
         
     alarm.status = "acknowledged"
     alarm.updated_at = datetime.utcnow()
+    alarm.handler_id = current_user.id # 记录处理人
     db.commit()
     return {"success": True}
 
 
 @router.put("/{alarm_id}/clear")
-def clear_alarm(alarm_id: int, db: Session = Depends(get_db)):
+def clear_alarm(
+    alarm_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """
     清除告警
     Clear alarm
@@ -76,5 +88,6 @@ def clear_alarm(alarm_id: int, db: Session = Depends(get_db)):
     alarm.status = "cleared"
     alarm.cleared_at = datetime.utcnow()
     alarm.updated_at = datetime.utcnow()
+    alarm.handler_id = current_user.id # 记录处理人
     db.commit()
     return {"success": True}

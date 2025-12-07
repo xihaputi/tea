@@ -15,3 +15,7 @@ export function getGardenPlots(gardenId) {
 export function getGardenDevices(gardenId) {
     return api.get(`/tea-gardens/${gardenId}/devices`);
 }
+
+export function updateGarden(id, data) {
+    return api.put(`/tea-gardens/${id}`, data);
+}

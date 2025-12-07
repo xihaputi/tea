@@ -83,6 +83,18 @@ const routes = [
       },
     ],
   },
+  {
+    path: "/task",
+    component: Layout,
+    children: [
+      {
+        path: "index",
+        component: () => import("@/views/task/index.vue"),
+        meta: { title: "计划任务", requiresAuth: true },
+      },
+    ],
+  },
+
   /*
   {
     path: "/rule-engine",

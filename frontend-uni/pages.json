@@ -11,7 +11,7 @@
     {
       "path": "pages/alarm/index",
       "style": {
-        "navigationBarTitleText": "告警中心",
+        "navigationBarTitleText": "事务中心",
         "navigationBarBackgroundColor": "#F3F4F6",
         "navigationBarTextStyle": "black"
       }
@@ -57,6 +57,19 @@
       "style": {
         "navigationBarTitleText": "茶园详情"
       }
+    },
+    {
+      "path": "pages/plot/edit_garden",
+      "style": {
+        "navigationBarTitleText": "编辑茶园"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "window": {
@@ -79,7 +92,7 @@
       },
       {
         "pagePath": "pages/alarm/index",
-        "text": "告警信息",
+        "text": "事务中心",
         "iconPath": "static/tabbar/alarm.png",
         "selectedIconPath": "static/tabbar/alarm-active.png"
       },

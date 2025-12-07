@@ -70,6 +70,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """聊天请求模型 / Chat Request Model"""
+    session_id: Optional[int] = None
     plot_id: Optional[int] = None
     question: str
     history: List[ChatMessage] = []
@@ -78,6 +79,22 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """聊天响应模型 / Chat Response Model"""
     answer: str
+    session_id: Optional[int] = None
+    
+class ChatSessionOut(BaseModel):
+    id: int
+    title: Optional[str]
+    created_at: datetime
+    class Config:
+        orm_mode = True
+
+class ChatMessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime
+    class Config:
+        orm_mode = True
 
 
 # Auth
@@ -295,6 +312,57 @@ class AlarmOut(AlarmCreate):
     deviceName: Optional[str] = None
     ruleName: Optional[str] = None
     gardenName: Optional[str] = None
+    handlerName: Optional[str] = None # Adds handler name
 
     class Config:
         orm_mode = True
+
+
+class TaskBase(BaseModel):
+    """任务基础模型 / Task Base Model"""
+    name: str
+    type: Optional[str] = "cron"
+    cron: Optional[str] = None
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    action_type: Optional[str] = None
+    action_data: Optional[str] = None
+    enabled: bool = True
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(TaskBase):
+    pass
+
+class TaskOut(TaskBase):
+    id: int
+    status: str
+    last_run: Optional[datetime] = None
+    next_run: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class TaskPageResult(BaseModel):
+    list: List[TaskOut]
+    total: int
+
+
+class SensorRuleCreate(BaseModel):
+    """传感器规则创建模型 / Sensor Rule Create Model"""
+    name: str
+    sensor_key: str
+    rule_config: str  # JSON string
+
+class SensorRuleOut(SensorRuleCreate):
+    """传感器规则输出模型 / Sensor Rule Output Model"""
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+

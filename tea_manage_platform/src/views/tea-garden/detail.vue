@@ -59,9 +59,13 @@
           </div>
           <div class="sensor-grid" v-if="sensorList.length > 0">
             <div class="sensor-item" v-for="(sensor, index) in sensorList" :key="index">
-              <div class="label">{{ sensor.label }}</div>
-              <div class="value">{{ sensor.value }}</div>
-              <div class="device-name" style="font-size: 10px; color: #ccc; margin-top: 2px;">{{ sensor.deviceName }}</div>
+              <div class="status-text" :style="{ color: sensor.statusColor || '#303133' }">
+                  {{ sensor.status || '监测中' }}
+              </div>
+              <div class="mini-info">
+                  <span class="light">{{ sensor.label }}</span>
+                  <span class="bold">{{ sensor.value }}</span>
+              </div>
             </div>
           </div>
           <el-empty v-else description="暂无传感器数据" :image-size="60" />
@@ -103,6 +107,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTeaGardenDetail } from '@/api/tea-garden'
 import { getDeviceList, getLatestTelemetry } from '@/api/device'
+import { getSensorRules } from '@/api/rule'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
@@ -111,6 +116,7 @@ const gardenId = route.params.id
 const garden = ref({})
 const loading = ref(false)
 const hasMap = ref(false)
+const rulesMap = ref({}) // key -> config
 
 // 天气数据
 const weather = ref({
@@ -130,6 +136,10 @@ const aiAdvice = ref([
 const fetchDetail = async () => {
   loading.value = true
   try {
+    // 1. 获取规则
+    await fetchRules()
+    
+    // 2. 获取详情
     const res = await getTeaGardenDetail(gardenId)
     if (res) {
       garden.value = res
@@ -144,6 +154,42 @@ const fetchDetail = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const fetchRules = async () => {
+    try {
+        const res = await getSensorRules()
+        if (res) {
+            res.forEach(rule => {
+                try {
+                    rulesMap.value[rule.sensor_key] = JSON.parse(rule.rule_config)
+                } catch (e) {}
+            })
+        }
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+// 状态计算逻辑
+const computeStatus = (key, value) => {
+    // 提取数值
+    const num = parseFloat(value)
+    if (isNaN(num)) return null
+    
+    const config = rulesMap.value[key]
+    if (!config) return null
+    
+    // 遍历规则区间
+    for (const rule of config) {
+        const min = rule.min !== null && rule.min !== undefined ? rule.min : -Infinity
+        const max = rule.max !== null && rule.max !== undefined ? rule.max : Infinity
+        
+        if (num >= min && num < max) {
+            return { label: rule.label, color: rule.color }
+        }
+    }
+    return null
 }
 
 const fetchWeather = (lat, lng) => {
@@ -195,9 +241,11 @@ const queryWeather = (adcode) => {
 
 const fetchGardenDevices = async () => {
   try {
+    console.log('Fetching devices for gardenId:', gardenId)
     // 获取该茶园下的所有设备
     const res = await getDeviceList({ gardenId: gardenId, size: 100 })
     const devices = res.list || []
+    console.log('Devices found:', devices)
     
     const allSensors = []
     
@@ -205,13 +253,17 @@ const fetchGardenDevices = async () => {
     const promises = devices.map(async (device) => {
       try {
         const telemetry = await getLatestTelemetry(device.id)
+        console.log(`Telemetry for device ${device.id}:`, telemetry)
+        
         // 解析传感器配置，获取单位和名称
         let config = {}
         try {
             if (device.sensor_config) {
                 config = JSON.parse(device.sensor_config)
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error('Config parse error', e)
+        }
 
         // 遍历遥测数据列表
         // 格式: [{ts:..., key:..., value:...}, ...]
@@ -227,6 +279,8 @@ const fetchGardenDevices = async () => {
             // 兼容旧格式（如果是对象）
             Object.assign(latestData, telemetry)
         }
+        
+        console.log(`Processed latestData for ${device.id}:`, latestData)
 
         for (const [key, value] of Object.entries(latestData)) {
             // 跳过忽略的键
@@ -237,11 +291,16 @@ const fetchGardenDevices = async () => {
             const name = sensorConf.name || key
             const unit = sensorConf.unit || ''
             
+            // 计算状态
+            const statusObj = computeStatus(key, value)
+            
             allSensors.push({
                 label: name,
                 value: value + (unit ? ' ' + unit : ''),
                 deviceId: device.id,
-                deviceName: device.name
+                deviceName: device.name,
+                status: statusObj ? statusObj.label : null,
+                statusColor: statusObj ? statusObj.color : null
             })
         }
       } catch (e) {
@@ -250,6 +309,7 @@ const fetchGardenDevices = async () => {
     })
     
     await Promise.all(promises)
+    console.log('Final sensor list:', allSensors)
     sensorList.value = allSensors
     lastUpdated.value = new Date().toLocaleTimeString()
     generateAiAdvice(allSensors)
@@ -260,6 +320,8 @@ const fetchGardenDevices = async () => {
 
 const generateAiAdvice = (sensors) => {
     const advice = []
+    // ... existing advice logic ...
+    // 可以基于 status 进一步优化建议 if needed
     
     // 1. 湿度分析
     const humiditySensor = sensors.find(s => s.label.includes('湿度'))
@@ -335,6 +397,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Only need to update sensor-item styles */
+.sensor-item { background: #fff; padding: 16px; border-radius: 8px; text-align: center; border: 1px solid #eee; transition: all 0.3s; }
+.sensor-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+.status-text { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.mini-info { font-size: 13px; color: #666; display: flex; justify-content: center; gap: 8px; align-items: center; }
+.mini-info .light { color: #999; }
+.mini-info .bold { font-weight: 600; color: #333; }
+
+/* Keep other styles */
 .page { padding: 24px; background: #f0f2f5; min-height: 100vh; }
 .page-header { background: #fff; padding: 20px 24px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
 .flex-center { display: flex; align-items: center; }
@@ -357,9 +429,6 @@ onUnmounted(() => {
 .url-text { font-size: 12px; margin-top: 8px; color: #444; }
 
 .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.sensor-item { background: #f9fafb; padding: 16px; border-radius: 8px; text-align: center; }
-.sensor-item .label { font-size: 12px; color: #909399; margin-bottom: 4px; }
-.sensor-item .value { font-size: 18px; font-weight: 600; color: #1f2a44; }
 
 .ai-advice .advice-item { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
 .advice-item.warning { background: #fdf6ec; color: #e6a23c; }

@@ -235,6 +235,83 @@ class Alarm(Base):
     created_at = Column(DateTime, default=datetime.utcnow) # 发生时间
     updated_at = Column(DateTime, default=datetime.utcnow) # 更新时间
     cleared_at = Column(DateTime, nullable=True)           # 清除时间
+    handler_id = Column(Integer, ForeignKey("users.id"), nullable=True) # 处理人ID
 
     device = relationship("Device", back_populates="alarms")
     rule = relationship("Rule")
+    handler = relationship("User") # 关联处理人
+
+
+class Task(Base):
+    """
+    计划任务/定时任务模型
+    Scheduled/Plan Task Model
+    """
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(150), nullable=False)      # 任务名称 / Task Name
+    type = Column(String(50), default="cron")       # 类型: cron, once, plan
+    cron = Column(String(100), nullable=True)       # Cron 表达式 / Cron Expression
+    
+    target_type = Column(String(50), nullable=True) # 目标类型: device, garden, system
+    target_id = Column(Integer, nullable=True)      # 目标ID
+    
+    action_type = Column(String(50), nullable=True) # 动作类型: control, notify, report
+    action_data = Column(Text, nullable=True)       # 动作数据 (JSON)
+    
+    enabled = Column(Boolean, default=True)         # 是否启用
+    status = Column(String(50), default="idle")     # 状态: idle, running, failed, last_success
+    
+    last_run = Column(DateTime, nullable=True)      # 上次执行时间
+    next_run = Column(DateTime, nullable=True)      # 下次执行时间
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SensorRule(Base):
+    """
+    传感器状态映射规则 (用于状态显示)
+    Sensor Status Mapping Rule
+    """
+    __tablename__ = "sensor_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)      # 规则名称 (e.g. 土壤水分判断标准)
+    sensor_key = Column(String(100), unique=True, index=True, nullable=False) # 传感器 Key (e.g. soil_humi)
+    rule_config = Column(Text, nullable=False)      # 规则配置 (JSON format)
+                                                    # e.g. [{"min":0, "max":50, "label":"干旱", "color":"#f56c6c"}]
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+
+class ChatSession(Base):
+    """
+    聊天会话模型
+    Chat Session Model
+    """
+    __tablename__ = "chat_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(100), nullable=True)     # 会话标题 / Session Title
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    """
+    聊天记录模型
+    Chat Message Model
+    """
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
+    role = Column(String(20), nullable=False)      # user / assistant / system
+    content = Column(Text, nullable=False)         # 内容 / Content
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("ChatSession", back_populates="messages")

@@ -32,8 +32,12 @@
             <span v-if="activeAlarmCount > 0" class="alarm-dot"></span>
           </template>
         </el-menu-item>
+        <el-menu-item index="/task/index">
+          <el-icon><Timer /></el-icon><template #title>计划任务</template>
+        </el-menu-item>
+
         
-        <el-sub-menu index="/system" v-if="userInfo.roles.includes('admin')">
+        <el-sub-menu index="/system" v-if="userInfo.roles.includes('admin') || userInfo.roles.includes('super_admin')">
           <template #title>
             <el-icon><Setting /></el-icon>
             <span>系统管理</span>
@@ -161,7 +165,7 @@ import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import { getUserInfo, logout } from '@/api/auth'
 import { getDashboardStats } from '@/api/dashboard'
 import { getAlarmList } from '@/api/alarm'
-import { User, SwitchButton, ArrowDown, Bell, Expand, Fold, MagicStick, Setting, Warning, CircleCheck } from '@element-plus/icons-vue'
+import { User, SwitchButton, ArrowDown, Bell, Expand, Fold, MagicStick, Setting, Warning, CircleCheck, Timer } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const isCollapse = ref(false)

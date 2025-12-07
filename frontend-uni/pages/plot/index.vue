@@ -6,8 +6,13 @@
       <view class="hero-overlay">
         <view class="hero-content">
           <view class="hero-top">
-            <text class="hero-title">{{ garden.name }}</text>
-            <view class="tag" :class="gardenStatusClass">{{ gardenStatusText }}</view>
+            <view style="display: flex; align-items: center; gap: 12rpx;">
+              <text class="hero-title">{{ garden.name }}</text>
+              <view class="tag" :class="gardenStatusClass">{{ gardenStatusText }}</view>
+            </view>
+            <view class="btn-icon-glass" @click="goEdit">
+              ✎
+            </view>
           </view>
           <view class="hero-info">
              <text class="info-text">{{ garden.company || '未归属公司' }}</text>
@@ -56,9 +61,11 @@
             </view>
             <view class="sensor-grid" v-if="sensorList.length > 0">
                 <view class="sensor-item" v-for="(item, index) in sensorList" :key="index">
-                    <text class="sensor-label">{{ item.label }}</text>
-                    <text class="sensor-value">{{ item.value }}</text>
-                    <text class="sensor-device">{{ item.deviceName }}</text>
+                    <text class="status-main" :style="{ color: item.statusColor || '#333' }">{{ item.status || '监测中' }}</text>
+                    <view class="sensor-sub">
+                         <text class="sensor-label">{{ item.label }}</text>
+                         <text class="sensor-val-sm">{{ item.value }}</text>
+                    </view>
                 </view>
             </view>
             <view class="empty-sensor" v-else>
@@ -127,6 +134,7 @@
 <script>
 import { getGardenDetail, getGardenDevices } from '@/api/garden.js';
 import { getLatestTelemetry } from '@/api/device.js';
+import { getSensorRules } from '@/api/rule.js';
 
 export default {
   data() {
@@ -136,6 +144,7 @@ export default {
       devices: [],
       loading: false,
       lastUpdated: '',
+      rulesMap: {}, // key -> rule config
       
       // 模拟天气数据 (因为没有真实API)
       weather: {
@@ -179,6 +188,8 @@ export default {
     async loadData() {
       this.loading = true;
       try {
+        await this.fetchRules();
+        
         // 1. 获取基本信息和设备列表
         const [garden, devices] = await Promise.all([
           getGardenDetail(this.gardenId),
@@ -198,6 +209,39 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    
+    async fetchRules() {
+        try {
+            const res = await getSensorRules();
+            if (res) {
+                res.forEach(r => {
+                    try {
+                        this.rulesMap[r.sensor_key] = JSON.parse(r.rule_config);
+                    } catch(e) {}
+                });
+            }
+        } catch(e) {
+            console.error('Fetch rules failed', e);
+        }
+    },
+    
+    computeStatus(key, value) {
+        const num = parseFloat(value);
+        if (isNaN(num)) return null;
+        
+        const config = this.rulesMap[key];
+        if (!config) return null;
+        
+        for (const rule of config) {
+            const min = rule.min !== null && rule.min !== undefined ? rule.min : -Infinity;
+            const max = rule.max !== null && rule.max !== undefined ? rule.max : Infinity;
+            
+            if (num >= min && num < max) {
+                return { label: rule.label, color: rule.color };
+            }
+        }
+        return null;
     },
     
     async fetchSensorData(devices) {
@@ -221,9 +265,12 @@ export default {
                     telemetry.forEach(item => {
                         if (!latestData[item.key]) latestData[item.key] = item.value;
                     });
+                } else if (typeof telemetry === 'object') {
+                    Object.assign(latestData, telemetry);
                 }
                 
                 for (const [key, value] of Object.entries(latestData)) {
+                    if (config.__ignored && config.__ignored.includes(key)) continue;
                     if (key === 'ts') continue;
                     // 简单过滤一些非环境数据
                     if (['battery', 'signal', 'version'].includes(key)) continue;
@@ -232,12 +279,16 @@ export default {
                     const name = sensorConf.name || this.formatKeyName(key);
                     const unit = sensorConf.unit || this.guessUnit(key);
                     
+                    const statusObj = this.computeStatus(key, value);
+                    
                     allSensors.push({
                         label: name,
                         value: value + unit,
                         rawVal: parseFloat(value), // 用于AI分析
                         key: key,
-                        deviceName: device.name
+                        deviceName: device.name,
+                        status: statusObj ? statusObj.label : null,
+                        statusColor: statusObj ? statusObj.color : null
                     });
                 }
             } catch (e) {
@@ -294,6 +345,9 @@ export default {
         this.aiAdvice = advice;
     },
 
+    goEdit() {
+      uni.navigateTo({ url: `/pages/plot/edit_garden?id=${this.gardenId}` });
+    },
     deviceStatusText(status) {
       return status === 'online' ? '在线' : '离线';
     },
@@ -326,8 +380,9 @@ export default {
 /* Hero Header */
 .hero-header {
   position: relative;
-  height: 560rpx; /* 进一步增加高度 */
-  width: 100%;
+  height: 560rpx;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
 }
 
 .hero-bg {
@@ -365,12 +420,26 @@ export default {
 }
 
 .hero-title {
-  font-size: 48rpx; /* 加大标题 */
+  font-size: 40rpx;
   font-weight: 700;
-  text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.5);
+  text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.3);
 }
 
-.hero-info {
+.btn-icon-glass {
+  width: 64rpx;
+  height: 64rpx;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 32rpx;
+  border: 1rpx solid rgba(255,255,255,0.3);
+}
+
+.hero-stats {
     font-size: 28rpx;
     opacity: 0.95;
     text-shadow: 0 1rpx 2rpx rgba(0,0,0,0.5);
@@ -477,27 +546,32 @@ export default {
 }
 .sensor-item {
     background: #F9FAFB;
-    padding: 20rpx;
-    border-radius: 12rpx;
+    padding: 24rpx;
+    border-radius: 16rpx;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
+    box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.02);
+}
+.status-main {
+    font-size: 36rpx;
+    font-weight: 700;
+    margin-bottom: 12rpx;
+}
+.sensor-sub {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
 }
 .sensor-label {
     font-size: 24rpx;
-    color: #666;
-    margin-bottom: 8rpx;
-}
-.sensor-value {
-    font-size: 36rpx;
-    font-weight: 700;
-    color: $primary;
-    margin-bottom: 8rpx;
-}
-.sensor-device {
-    font-size: 20rpx;
     color: #999;
+}
+.sensor-val-sm {
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #333;
 }
 .empty-sensor {
     text-align: center;

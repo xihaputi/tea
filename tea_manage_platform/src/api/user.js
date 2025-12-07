@@ -30,3 +30,10 @@ export function deleteUser(id) {
         method: 'delete'
     })
 }
+
+export function impersonateUser(id) {
+    return request({
+        url: `/users/${id}/login_as`,
+        method: 'post'
+    })
+}

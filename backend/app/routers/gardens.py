@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Plot, TeaGarden
+from ..models import Plot, TeaGarden, User
 from ..schemas import DeviceOut, PageResult, PlotCreate, PlotOut, TeaGardenCreate, TeaGardenOut, TeaGardenUpdate
+from ..dependencies import check_super_admin, get_current_active_user, is_super_admin, verify_garden_access
 
 router = APIRouter(prefix="/tea-gardens", tags=["tea-gardens"])
 
@@ -17,16 +18,29 @@ def list_gardens(
     name: Optional[str] = None,
     company: Optional[str] = None,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_active_user),
 ):
     """
-    获取茶园列表
-    Get tea garden list
+    获取茶园列表 (根据权限过滤)
+    Get tea garden list (Role-based)
     """
-    query = db.query(TeaGarden)
+    if is_super_admin(user):
+        # 超级管理员查看所有
+        query = db.query(TeaGarden)
+    else:
+        # 普通管理员/用户只查看分配的茶园
+        # Use user.gardens relationship directly, but need to filter further if query params exist
+        # Better to query TeaGarden and join/filter by ID list
+        assigned_ids = [g.id for g in user.gardens]
+        if not assigned_ids:
+            return PageResult(list=[], total=0)
+        query = db.query(TeaGarden).filter(TeaGarden.id.in_(assigned_ids))
+
     if name:
         query = query.filter(TeaGarden.name.like(f"%{name}%"))
     if company:
         query = query.filter(TeaGarden.company == company)
+        
     total = query.count()
     items = query.offset((page - 1) * size).limit(size).all()
     
@@ -50,16 +64,18 @@ def list_gardens(
         out.alarmCount = alarm_count
         result_list.append(out)
         
-
-        
     return PageResult(list=result_list, total=total)
 
 
 @router.post("", response_model=TeaGardenOut)
-def create_garden(payload: TeaGardenCreate, db: Session = Depends(get_db)):
+def create_garden(
+    payload: TeaGardenCreate, 
+    db: Session = Depends(get_db),
+    user: User = Depends(check_super_admin) # 仅超级管理员可创建
+):
     """
-    创建茶园
-    Create tea garden
+    创建茶园 (仅超级管理员)
+    Create tea garden (Super Admin only)
     """
     item = TeaGarden(**payload.dict())
     db.add(item)

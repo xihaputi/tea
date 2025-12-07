@@ -143,3 +143,29 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(user)
     db.commit()
     return {"success": True}
+
+
+from ..schemas import LoginResponse, UserInfo
+from ..dependencies import check_super_admin
+
+@router.post("/{user_id}/login_as", response_model=LoginResponse, dependencies=[Depends(check_super_admin)])
+def login_as_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    以指定用户身份登录 (仅限超级管理员)
+    Login as specified user (Super Admin only)
+    """
+    user = db.query(User).get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user_info = UserInfo(
+        id=user.id,
+        name=user.name,
+        avatar=user.avatar or "",
+        roles=user.roles.split(",") if user.roles else [],
+        permissions=json.loads(user.permissions) if user.permissions else []
+    )
+    # Generate token (format must match auth.py logic)
+    token = f"token-{user.id}-{user.username}"
+    
+    return LoginResponse(token=token, userInfo=user_info)

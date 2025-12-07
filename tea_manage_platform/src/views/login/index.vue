@@ -3,7 +3,7 @@
     <div class="bg-layer"></div>
     <div class="login-card animate-up">
       <div class="header">
-        <h1 class="app-name">Tea Brain</h1>
+        <h1 class="app-name">智慧茶园管理系统</h1>
         <p class="app-slogan">智慧茶园数字大脑</p>
       </div>
 
@@ -47,15 +47,21 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res = await apiLogin({ username: form.username, password: form.password })
+    console.log('Login response:', res) // Debug
     if (res && res.token) {
       localStorage.setItem('tea_token', res.token)
+      localStorage.setItem('tea_roles', JSON.stringify(res.userInfo?.roles || []))
+      localStorage.setItem('tea_permissions', JSON.stringify(res.userInfo?.permissions || []))
       localStorage.setItem('tea_user', JSON.stringify(res.userInfo || {}))
-      ElMessage.success('欢迎回来')
+
+      ElMessage.success('登录成功')
       router.push('/dashboard')
     } else {
-      ElMessage.error('登录失败，账号或密码错误')
+      console.error('Invalid login response:', res)
+      ElMessage.error('登录失败：无效的响应格式')
     }
   } catch (error) {
+    console.error('Login error:', error)
     ElMessage.error(error?.response?.data?.detail || '登录失败，请检查账号密码')
   } finally {
     loading.value = false

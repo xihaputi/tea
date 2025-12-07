@@ -6,7 +6,7 @@
         <div class="title">物联设备总览</div>
         <div class="sub">分组、状态、遥测一站式管理</div>
       </div>
-      <el-button type="primary" icon="Plus" @click="handleAdd">注册新设备</el-button>
+      <el-button type="primary" icon="Plus" @click="handleAdd" v-permission="['admin', 'super_admin']">注册新设备</el-button>
     </div>
 
     <el-row :gutter="16">
@@ -67,10 +67,10 @@
             </el-table-column>
             <el-table-column label="操作" width="220">
               <template #default="{ row }">
-                <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+                <el-button link type="primary" @click="handleEdit(row)" v-permission="['admin', 'super_admin']">编辑</el-button>
                 <el-button link type="primary" @click="handleCurve(row)">查看曲线</el-button>
-                <el-button link type="primary" @click="handleDebug(row)">调试</el-button>
-                <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button link type="primary" @click="handleDebug(row)" v-permission="['admin', 'super_admin']">调试</el-button>
+                <el-button link type="danger" @click="handleDelete(row)" v-permission="['admin', 'super_admin']">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -97,11 +97,21 @@
         <el-form-item label="上报话题">
             <el-input :value="computedTopic" readonly>
                 <template #append>
-                    <el-button @click="copyTopic" icon="CopyDocument" />
+                    <el-button @click="copyTopic(computedTopic)" icon="CopyDocument" />
                 </template>
             </el-input>
-            <div class="text-gray-400 text-xs mt-1">格式: tea/{产品名称}/{序列号}/telemetry</div>
+            <div class="text-gray-400 text-xs mt-1">格式: tea/{类型}/{序列号}/telemetry</div>
         </el-form-item>
+
+        <el-form-item label="订阅话题" v-if="computedSubTopic">
+            <el-input :value="computedSubTopic" readonly>
+                <template #append>
+                    <el-button @click="copyTopic(computedSubTopic)" icon="CopyDocument" />
+                </template>
+            </el-input>
+             <div class="text-gray-400 text-xs mt-1">设备需订阅此话题以接收控制指令</div>
+        </el-form-item>
+
 
         <el-divider content-position="left">MQTT 认证信息</el-divider>
         <el-form-item label="MQTT 用户名" prop="mqtt_username">
@@ -217,16 +227,7 @@ const rules = {
   product_id: [{ required: true, message: '请选择所属产品', trigger: 'change' }]
 }
 
-const fetchProducts = async () => {
-  try {
-    const res = await getProductGroups()
-    if (res) {
-      productTree.value = res
-    }
-  } catch (error) {
-    console.error(error)
-  }
-}
+
 
 const fetchDevices = async () => {
   loading.value = true
@@ -516,27 +517,52 @@ const handleSubmit = async () => {
   })
 }
 
-
-
-const computedTopic = computed(() => {
-    const sn = form.sn || '{序列号}'
-    let productName = '{产品名称}'
-    if (form.product_id) {
-        const product = productTree.value.find(p => p.id === form.product_id)
-        if (product) {
-            productName = product.label
-        }
+const fetchProducts = async () => {
+  try {
+    const res = await getProductGroups()
+    if (res) {
+      productTree.value = res
     }
-    return `tea/${productName}/${sn}/telemetry`
-})
+  } catch (error) {
+    console.error(error)
+  }
+}
 
-const copyTopic = () => {
-    navigator.clipboard.writeText(computedTopic.value).then(() => {
-        ElMessage.success('话题已复制')
+const copyTopic = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+        ElMessage.success('已复制')
     }).catch(() => {
         ElMessage.error('复制失败')
     })
 }
+
+const computedTopic = computed(() => {
+    const sn = form.sn || '{序列号}'
+    let topicType = '{type}' 
+    
+    if (form.product_id) {
+        const product = productTree.value.find(p => p.id === form.product_id)
+        
+        if (product) {
+            const label = product.label
+            if (label.includes('气象站')) topicType = 'weather'
+            else if (label.includes('土壤')) topicType = 'sensor'
+            else if (label.includes('阀门') || label.includes('水肥')) topicType = 'contral'
+            else topicType = 'device'
+        }
+    }
+    return `tea/${topicType}/${sn}/telemetry`
+})
+
+
+const computedSubTopic = computed(() => {
+    const pub = computedTopic.value
+    if (pub.includes('contral')) {
+        return pub.replace('telemetry', 'sub')
+    }
+    return ''
+})
+
 
 onMounted(() => {
   fetchProducts()

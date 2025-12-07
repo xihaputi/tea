@@ -2,6 +2,14 @@
 export default {
   onLaunch() {
     console.log('App Launch');
+    // Check login status
+    const token = uni.getStorageSync('token');
+    if (!token) {
+      // Use reLaunch to clear page stack and go to login
+      uni.reLaunch({
+        url: '/pages/login/index'
+      });
+    }
   },
   onShow() {
     console.log('App Show');

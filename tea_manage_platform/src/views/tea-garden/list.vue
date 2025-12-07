@@ -6,7 +6,7 @@
         <div class="title">茶园总览</div>
         <div class="sub">统一视图管理茶园、地块与设备情况</div>
       </div>
-      <el-button type="primary" icon="Plus" @click="handleAdd">新增茶园</el-button>
+      <el-button type="primary" icon="Plus" @click="handleAdd" v-permission="['super_admin']">新增茶园</el-button>
     </div>
 
     <div class="filters card">
@@ -42,9 +42,9 @@
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="goDetail(row.id)">详情</el-button>
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="success" @click="handleBindDevice(row)">绑定设备</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">停用</el-button>
+            <el-button link type="primary" @click="handleEdit(row)" v-permission="['admin', 'super_admin']">编辑</el-button>
+            <el-button link type="success" @click="handleBindDevice(row)" v-permission="['admin', 'super_admin']">绑定设备</el-button>
+            <el-button link type="danger" @click="handleDelete(row)" v-permission="['admin', 'super_admin']">停用</el-button>
           </template>
         </el-table-column>
       </el-table>

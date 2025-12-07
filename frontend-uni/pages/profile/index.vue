@@ -1,96 +1,78 @@
 <template>
   <view class="page-container">
-    <view class="title-lg header">我的</view>
-
-    <!-- 未登录状态 -->
-    <view v-if="!isLoggedIn" class="login-box card">
-      <view class="title-md" style="margin-bottom: 32rpx; text-align: center;">账号登录</view>
-      <input class="input" v-model="loginForm.username" placeholder="请输入用户名" />
-      <input class="input" v-model="loginForm.password" password placeholder="请输入密码" />
-      <button class="btn-primary" @click="handleLogin" :loading="loading">登录</button>
+    <!-- Header Background -->
+    <view class="profile-header">
+      <view class="title-lg text-white">个人中心</view>
     </view>
+    
+    <view class="profile-content">
+      <!-- User Card -->
+      <view class="card user-card">
+        <view class="avatar-box">
+          <text class="avatar-text">{{ user.name ? user.name[0] : (user.username ? user.username[0] : 'U') }}</text>
+        </view>
+        <view class="user-info">
+          <text class="user-name">{{ user.name || user.username }}</text>
+          <view class="user-role-tag">
+            {{ user.roles ? user.roles.join(', ') : '普通用户' }}
+          </view>
+        </view>
+        <view class="edit-btn" @click="showToast('编辑功能开发中')">✎</view>
+      </view>
 
-    <!-- 已登录状态 -->
-    <view v-else>
-      <view class="card profile-card">
-        <view class="avatar-placeholder">{{ user.name ? user.name[0] : 'U' }}</view>
-        <view class="info">
-          <text class="name">{{ user.name || user.username }}</text>
-          <text class="role">{{ user.roles ? user.roles.join(', ') : '普通用户' }}</text>
+      <!-- Menu List -->
+      <view class="card menu-card">
+        <view class="menu-item" @click="showToast('账号安全功能开发中')">
+          <view class="menu-left">
+            <text class="menu-icon">🛡️</text>
+            <text class="menu-text">账号与安全</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+        <view class="menu-divider"></view>
+        <view class="menu-item" @click="showToast('系统设置功能开发中')">
+          <view class="menu-left">
+            <text class="menu-icon">⚙️</text>
+            <text class="menu-text">系统设置</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+        <view class="menu-divider"></view>
+        <view class="menu-item" @click="showToast('关于我们功能开发中')">
+          <view class="menu-left">
+            <text class="menu-icon">ℹ️</text>
+            <text class="menu-text">关于我们</text>
+          </view>
+          <text class="menu-arrow">›</text>
         </view>
       </view>
 
-      <view class="card menu-list">
-        <view class="menu-item" @click="showToast('功能开发中')">
-          <text>账号设置</text>
-          <text class="arrow">></text>
-        </view>
-        <view class="menu-item" @click="showToast('功能开发中')">
-          <text>关于我们</text>
-          <text class="arrow">></text>
-        </view>
-      </view>
-
-      <button class="logout-btn" @click="handleLogout">退出登录</button>
+      <button class="btn-logout" @click="handleLogout">退出登录</button>
     </view>
   </view>
 </template>
 
 <script>
-import { login, getUserInfo, logout } from '@/api/auth.js';
+import { getUserInfo, logout } from '@/api/auth.js';
 
 export default {
   data() {
     return {
-      isLoggedIn: false,
-      loading: false,
-      user: {},
-      loginForm: {
-        username: '',
-        password: ''
-      }
+      user: {}
     };
   },
   onShow() {
-    this.checkLogin();
+    this.loadUserInfo();
   },
   methods: {
-    checkLogin() {
-      const token = uni.getStorageSync('token');
-      if (token) {
-        this.isLoggedIn = true;
-        this.fetchUserInfo();
-      } else {
-        this.isLoggedIn = false;
-        this.user = {};
-      }
-    },
-    async fetchUserInfo() {
+    async loadUserInfo() {
+      // We assume token exists because app forces login
       try {
         const res = await getUserInfo();
         this.user = res;
       } catch (e) {
-        // Token invalid
-        this.isLoggedIn = false;
-        uni.removeStorageSync('token');
-      }
-    },
-    async handleLogin() {
-      if (!this.loginForm.username || !this.loginForm.password) {
-        uni.showToast({ title: '请输入账号密码', icon: 'none' });
-        return;
-      }
-      this.loading = true;
-      try {
-        const res = await login(this.loginForm);
-        uni.setStorageSync('token', res.token);
-        this.isLoggedIn = true;
-        this.user = res.userInfo;
-        uni.showToast({ title: '登录成功', icon: 'success' });
-      } catch (e) {
-        uni.showToast({ title: e.detail || '登录失败', icon: 'none' });
-      } finally {
-        this.loading = false;
+        // If getting user info fails (e.g. 401), HTTP interceptor will handle redirect
+        // But we can also handle it partly here
       }
     },
     async handleLogout() {
@@ -98,9 +80,10 @@ export default {
         await logout();
       } catch (e) {}
       uni.removeStorageSync('token');
-      this.isLoggedIn = false;
-      this.user = {};
-      this.loginForm = { username: '', password: '' };
+      uni.removeStorageSync('userInfo');
+      
+      // Force redirect to login
+      uni.reLaunch({ url: '/pages/login/index' });
     },
     showToast(msg) {
       uni.showToast({ title: msg, icon: 'none' });
@@ -112,87 +95,209 @@ export default {
 <style lang="scss" scoped>
 @import "@/uni.scss";
 
-.header {
-  padding: 24rpx 0;
+.page-container {
+  padding: 0;
+  background-color: $bg-page;
+  min-height: 100vh;
 }
 
-.login-box {
-  padding: 40rpx;
-  margin-top: 40rpx;
+/* Header with Green Background */
+.profile-header {
+  height: 300rpx;
+  background: linear-gradient(180deg, $primary-dark 0%, $primary 100%);
+  padding: 88rpx 32rpx 0;
 }
 
-.input {
-  background: #F9FAFB;
-  border: 2rpx solid #E5E7EB;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-bottom: 24rpx;
-  font-size: 28rpx;
+.profile-content {
+  padding: 0 32rpx;
+  margin-top: -100rpx; /* Pull up to overlap header */
+  padding-bottom: 40rpx;
 }
 
-.profile-card {
+/* User Card */
+.user-card {
   display: flex;
   align-items: center;
   padding: 40rpx;
+  margin-bottom: 32rpx;
 }
 
-.avatar-placeholder {
-  width: 100rpx;
-  height: 100rpx;
+.avatar-box {
+  width: 120rpx;
+  height: 120rpx;
   background: $primary-light;
-  color: $primary;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40rpx;
+  margin-right: 32rpx;
+  border: 4rpx solid #fff;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.1);
+  
+  &.placeholder {
+    background: #E5E7EB;
+    color: #9CA3AF;
+  }
+}
+
+.avatar-text {
+  font-size: 48rpx;
   font-weight: 700;
-  margin-right: 24rpx;
+  color: $primary-dark;
 }
 
-.info {
-  display: flex;
-  flex-direction: column;
+.user-info {
+  flex: 1;
 }
 
-.name {
-  font-size: 32rpx;
+.user-name {
+  font-size: 36rpx;
   font-weight: 700;
   color: $text-main;
+  display: block;
+  margin-bottom: 8rpx;
 }
 
-.role {
-  font-size: 24rpx;
+.user-role-tag {
+  display: inline-block;
+  font-size: 22rpx;
+  background: $primary-light;
+  color: $primary-dark;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  font-weight: 600;
+}
+
+.user-desc {
+  font-size: 26rpx;
   color: $text-sub;
-  margin-top: 8rpx;
 }
 
-.menu-list {
-  padding: 0 24rpx;
+.edit-btn {
+  color: $text-sub;
+  font-size: 36rpx;
+  padding: 10rpx;
+}
+
+.login-prompt {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.login-btn {
+  background: $primary;
+  color: #fff;
+  font-size: 26rpx;
+  padding: 12rpx 32rpx;
+  border-radius: 999rpx;
+  font-weight: 600;
+}
+
+/* Menu List */
+.menu-card {
+  padding: 0 32rpx;
 }
 
 .menu-item {
   display: flex;
   justify-content: space-between;
-  padding: 32rpx 0;
-  border-bottom: 2rpx solid #F3F4F6;
+  align-items: center;
+  padding: 36rpx 0;
+  
+  &:active { opacity: 0.7; }
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+}
+
+.menu-icon {
+  font-size: 36rpx;
+  margin-right: 24rpx;
+  width: 48rpx;
+  text-align: center;
+}
+
+.menu-text {
+  font-size: 30rpx;
+  color: $text-main;
+  font-weight: 500;
+}
+
+.menu-arrow {
+  color: #D1D5DB;
+  font-size: 40rpx;
+  line-height: 1;
+}
+
+.menu-divider {
+  height: 2rpx;
+  background: #F3F4F6;
+}
+
+/* Logout Button */
+.btn-logout {
+  margin-top: 48rpx;
+  background: #fff;
+  color: #EF4444;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  
+  &::after { border: none; }
+  &:active { background: #FEF2F2; }
+}
+
+/* Login Modal */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.login-modal {
+  width: 80%;
+  padding: 48rpx;
+}
+
+.modal-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 48rpx;
+  color: $text-main;
+}
+
+.input-field {
+  background: #F9FAFB;
+  border: 2rpx solid #E5E7EB;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
   font-size: 28rpx;
   color: $text-main;
   
-  &:last-child {
-    border-bottom: none;
+  &:focus {
+    border-color: $primary;
   }
 }
 
-.logout-btn {
-  margin-top: 40rpx;
-  background: #FEE2E2;
-  color: #DC2626;
-  font-size: 28rpx;
-  border-radius: 16rpx;
-  
-  &::after {
-    border: none;
-  }
+.full-width {
+  width: 100%;
+  margin-top: 24rpx;
+}
+
+.text-center {
+  text-align: center;
 }
 </style>

@@ -8,6 +8,10 @@ export function getAlarmDetail(id) {
     return api.get(`/alarms/${id}`);
 }
 
-export function updateAlarmStatus(id, status) {
-    return api.put(`/alarms/${id}/status`, { status });
+export function acknowledgeAlarm(id) {
+    return api.put(`/alarms/${id}/ack`);
+}
+
+export function clearAlarm(id) {
+    return api.put(`/alarms/${id}/clear`);
 }

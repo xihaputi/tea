@@ -30,6 +30,11 @@
                 <el-tag v-else type="success">已清除</el-tag>
             </template>
         </el-table-column>
+        <el-table-column prop="handlerName" label="处理人" width="120">
+            <template #default="{row}">
+                {{ row.handlerName || '-' }}
+            </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
             <template #default="{row}">
                 <el-button 
