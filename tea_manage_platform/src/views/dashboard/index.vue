@@ -86,17 +86,16 @@
               {{ garden.status === 'active' ? '正常运营' : '维护中' }}
             </div>
             
-            <!-- 封面上传按钮 (悬停显示) -->
-            <div class="upload-overlay" @click.stop>
-              <el-upload
-                class="upload-demo"
-                action="#"
-                :show-file-list="false"
-                :http-request="(options) => handleUpload(options, garden)"
-                accept="image/*"
-              >
-                <el-button type="primary" size="small" icon="Camera">更换封面</el-button>
-              </el-upload>
+            <!-- 封面上传按钮 (移到右上角，改为点击选择) -->
+            <div class="card-actions" @click.stop>
+                <el-button 
+                    type="primary" 
+                    circle 
+                    size="small" 
+                    :icon="Edit" 
+                    class="action-btn"
+                    @click="openImageSelector(garden)"
+                />
             </div>
           </div>
           
@@ -129,6 +128,13 @@
         </el-card>
       </el-col>
     </el-row>
+
+    
+    <ImageSelector 
+        v-model="showImageSelector"
+        :current-image="currentEditGarden?.image_path"
+        @select="handleImageSelect"
+    />
   </div>
 </template>
 
@@ -140,9 +146,11 @@ import { getDashboardStats } from '@/api/dashboard'
 import { getTeaGardenList, updateTeaGarden } from '@/api/tea-garden'
 import { getAlarmList } from '@/api/alarm'
 import { uploadFile } from '@/api/upload'
-import { Collection, Cpu, Bell, User, TrendCharts, PieChart, Picture, Location, Warning, Camera } from '@element-plus/icons-vue'
+import { Collection, Cpu, Bell, User, TrendCharts, PieChart, Picture, Location, Warning, Camera, Edit } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
+import ImageSelector from '@/components/ImageSelector.vue'
+
 
 const router = useRouter()
 
@@ -154,6 +162,9 @@ const stats = reactive({
   user_count: 0,
   alarm_trend: []
 })
+
+const showImageSelector = ref(false)
+const currentEditGarden = ref(null)
 
 const gardenList = ref([])
 const alarmList = ref([])
@@ -178,7 +189,7 @@ const defaultImages = [
 
 const getGardenImage = (garden) => {
   if (garden.image_path) {
-    // 如果是相对路径，添加前缀
+    // 如果是后端返回的相对路径 (包括 /static/)，添加后端 API 前缀
     if (garden.image_path.startsWith('/')) {
       return import.meta.env.VITE_APP_BASE_API + garden.image_path
     }
@@ -192,18 +203,22 @@ const formatTime = (time) => {
   return dayjs(time).format('MM-DD HH:mm')
 }
 
-const handleUpload = async (options, garden) => {
+const openImageSelector = (garden) => {
+    currentEditGarden.value = garden
+    showImageSelector.value = true
+}
+
+const handleImageSelect = async (url) => {
+  if (!currentEditGarden.value) return
+  
   try {
-    const formData = new FormData()
-    formData.append('file', options.file)
-    const res = await uploadFile(formData)
-    
+    const garden = currentEditGarden.value
     // 更新茶园信息
-    await updateTeaGarden(garden.id, { image_path: res.url })
-    garden.image_path = res.url
+    await updateTeaGarden(garden.id, { image_path: url })
+    garden.image_path = url
     ElMessage.success('封面更新成功')
   } catch (error) {
-    ElMessage.error('上传失败')
+    ElMessage.error('更新失败')
     console.error(error)
   }
 }
@@ -434,23 +449,28 @@ onUnmounted(() => {
 .status-active { background: rgba(103, 194, 58, 0.9); }
 .status-inactive { background: rgba(144, 147, 153, 0.9); }
 
-/* 上传遮罩 */
-.upload-overlay {
+/* 上传/编辑按钮 */
+.card-actions {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-  z-index: 3;
+  top: 12px;
+  right: 12px; /* Next to status which is 12px right? Wait, status is absolute too. */
+  z-index: 5;
+  /* status is at right: 12px as well. We need to move one. 
+     Let's put the button strictly at top-right, and move status down or left.
+     Or put button at top-LEFT? The user said "top right".
+     Status is also "active" / "maintenance". 
+     Let's put the button at top-right (z-index higher) and move status to top-left?
+     Or put button below status? 
+     Let's move status to top-left.
+  */
 }
-.garden-image-wrapper:hover .upload-overlay {
-  opacity: 1;
+.garden-status {
+    right: auto;
+    left: 12px;
+}
+
+.action-btn {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 .garden-info {

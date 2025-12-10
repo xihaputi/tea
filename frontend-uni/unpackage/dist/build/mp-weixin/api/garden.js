@@ -1,0 +1,1 @@
+"use strict";const e=require("../common/http.js");exports.getGardenDetail=function(t){return e.api.get(`/tea-gardens/${t}`)},exports.getGardenDevices=function(t){return e.api.get(`/tea-gardens/${t}/devices`)},exports.getGardenList=function(t){return e.api.get("/tea-gardens",t)},exports.updateGarden=function(t,r){return e.api.put(`/tea-gardens/${t}`,r)};

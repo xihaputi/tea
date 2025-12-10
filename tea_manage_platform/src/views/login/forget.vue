@@ -3,7 +3,8 @@
     <div class="bg-layer"></div>
     <div class="login-card animate-up">
       <div class="header">
-        <h1 class="app-name">Tea Brain</h1>
+        <img src="@/assets/logo.jpg" alt="Logo" class="logo-img" />
+        <h1 class="app-name">茶智云</h1>
         <p class="app-slogan">重置密码</p>
       </div>
 
@@ -44,7 +45,7 @@
         </el-button>
 
         <div class="footer-links">
-          <span @click="$router.push('/login')">返回登录</span>
+          <span class="link-text" @click="$router.push('/login')">返回登录</span>
         </div>
       </el-form>
     </div>
@@ -56,6 +57,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { resetPassword } from '@/api/auth'
+import { User, Lock } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -92,7 +94,6 @@ const handleReset = async () => {
 </script>
 
 <style scoped>
-/* 复用登录页样式 */
 .login-container {
   position: relative;
   width: 100vw;
@@ -101,100 +102,134 @@ const handleReset = async () => {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: #333;
+  background: #1a202c;
 }
 
 .bg-layer {
   position: absolute;
   inset: 0;
-  background: url('https://images.unsplash.com/photo-1586616863660-e4c163016259?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
-  background-size: cover;
-  filter: blur(6px) brightness(0.85);
-  transform: scale(1.05);
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(19, 194, 194, 0.2) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(66, 211, 146, 0.15) 0%, transparent 40%),
+    linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  z-index: 0;
+}
+
+.bg-layer::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, transparent 50%);
+  animation: rotate 60s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .login-card {
   position: relative;
-  width: 380px;
-  padding: 40px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  width: 420px;
+  padding: 56px 48px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 30px;
+.header { text-align: center; margin-bottom: 40px; }
+.logo-img { 
+  width: 80px; 
+  height: 80px; 
+  border-radius: 20px; 
+  margin-bottom: 20px; 
+  box-shadow: 0 12px 24px rgba(19, 194, 194, 0.2);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.logo-img:hover { transform: scale(1.1) rotate(5deg); }
 
-.app-name {
-  font-size: 32px;
-  font-weight: 800;
-  color: #13c2c2;
-  margin: 0;
-  letter-spacing: -1px;
+.app-name { 
+  font-size: 32px; 
+  font-weight: 900; 
+  color: #0f172a; 
+  margin: 0; 
+  letter-spacing: -0.5px;
+  background: linear-gradient(to right, #13c2c2, #42d392);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-
-.app-slogan {
-  font-size: 14px;
-  color: #5c6b7f;
-  margin-top: 5px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+.app-slogan { 
+  font-size: 14px; 
+  color: #64748b; 
+  margin-top: 8px; 
+  letter-spacing: 3px; 
+  text-transform: uppercase; 
+  font-weight: 500;
 }
 
 :deep(.custom-input .el-input__wrapper) {
-  background-color: rgba(255, 255, 255, 0.6);
-  box-shadow: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 8px;
-  padding: 10px;
-  transition: all 0.3s;
+  background-color: rgba(241, 245, 249, 0.8);
+  box-shadow: none !important;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px 12px;
+  height: 46px;
+  transition: all 0.3s ease;
 }
-
-:deep(.custom-input .el-input__wrapper:hover),
+:deep(.custom-input .el-input__wrapper:hover) {
+  background-color: #fff;
+  border-color: #e2e8f0;
+}
 :deep(.custom-input.is-focus .el-input__wrapper) {
   background-color: #fff;
-  border-bottom: 2px solid #13c2c2;
+  border-color: #13c2c2;
+  box-shadow: 0 0 0 4px rgba(19, 194, 194, 0.1) !important;
 }
 
 .login-btn {
   width: 100%;
-  height: 48px;
+  height: 50px;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   background: linear-gradient(135deg, #42d392 0%, #13c2c2 100%);
   border: none;
-  margin-top: 10px;
-  box-shadow: 0 4px 15px rgba(19, 194, 194, 0.4);
+  margin-top: 16px;
+  box-shadow: 0 10px 20px -5px rgba(19, 194, 194, 0.4);
   transition: all 0.3s;
 }
-
-.login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(19, 194, 194, 0.5);
+.login-btn:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 15px 25px -5px rgba(19, 194, 194, 0.5); 
 }
+.login-btn:active { transform: translateY(0); }
 
-.footer-links {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  font-size: 12px;
-  color: #7d8592;
+.footer-links { 
+  margin-top: 24px; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  font-size: 14px; 
+  color: #94a3b8; 
+}
+.link-text {
   cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.3s;
 }
+.link-text:hover { color: #13c2c2; }
 
-.animate-up {
-  animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.animate-up { animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
 </style>

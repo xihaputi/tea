@@ -191,6 +191,7 @@ class TeaGardenCreate(BaseModel):
 
 class TeaGardenUpdate(TeaGardenCreate):
     """茶园更新模型 / Tea Garden Update Model"""
+    name: Optional[str] = None
     status: Optional[str] = None
 
 

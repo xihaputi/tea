@@ -3,12 +3,12 @@
     <!-- Top Header -->
     <view class="dashboard-header">
       <view class="header-content">
-        <text class="greeting">早上好，{{ userName }}</text>
+        <text class="greeting">{{ greetingText }}，{{ userName }}</text>
         <text class="title-lg text-white">茶园总览</text>
       </view>
       <view class="weather-widget">
-        <text class="weather-temp">24°C</text>
-        <text class="weather-desc">多云</text>
+        <text class="weather-temp">{{ weather.temperature }}°C</text>
+        <text class="weather-desc">{{ weather.weather }}</text>
       </view>
     </view>
 
@@ -70,6 +70,7 @@
 <script>
 import { getDashboardStats } from '@/api/dashboard.js';
 import { getGardenList } from '@/api/garden.js';
+import { getWeather } from '@/api/weather.js';
 
 export default {
   data() {
@@ -81,7 +82,12 @@ export default {
       },
       gardens: [],
       loading: false,
-      userName: '管理员'
+      loading: false,
+      userName: '管理员',
+      weather: {
+        temperature: '--',
+        weather: '获取中...'
+      }
     };
   },
   onShow() {
@@ -98,18 +104,30 @@ export default {
     async loadData() {
       this.loading = true;
       try {
+        // 1. Load core data (Fast)
         const [statsRes, gardensRes] = await Promise.all([
           getDashboardStats(),
           getGardenList({ page: 1, size: 100 })
         ]);
-        
+
         this.stats = statsRes;
         this.gardens = gardensRes.list.map(item => ({
           ...item,
           devices: item.totalCount || 0,
-          image: item.image_path ? (this.$baseUrl + item.image_path) : '/static/default_garden.jpg', // Handle image path
+          image: item.image_path ? (this.$baseUrl + item.image_path) : '/static/default_garden.jpg', 
           lastAlert: item.alarmCount > 0 ? `${item.alarmCount}条告警待处理` : null
         }));
+
+        // 2. Load weather asynchronously (Slow, don't block)
+        getWeather('信阳').then(res => {
+            if (res) this.weather = res;
+        }).catch(e => console.error('Weather load failed', e));
+
+        // 3. Silent Prefetch for gardens (Populate cache for Detail Page)
+        this.gardens.forEach(g => {
+            const loc = g.address || g.name || '信阳';
+            getWeather(loc).catch(() => {}); // Just cache it, ignore result/error
+        });
         
       } catch (e) {
         console.error(e);
@@ -122,6 +140,17 @@ export default {
     goDetail(id) {
       // Navigate to Garden Detail (Plot List)
       uni.navigateTo({ url: `/pages/plot/index?garden_id=${id}` });
+    }
+  },
+  computed: {
+    greetingText() {
+        const hour = new Date().getHours();
+        if (hour < 6) return '夜深了';
+        if (hour < 9) return '早上好';
+        if (hour < 12) return '上午好';
+        if (hour < 14) return '中午好';
+        if (hour < 18) return '下午好';
+        return '晚上好';
     }
   }
 };

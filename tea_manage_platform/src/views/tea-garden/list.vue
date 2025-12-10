@@ -66,6 +66,15 @@
         <el-form-item label="茶园名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入茶园名称" />
         </el-form-item>
+        <el-form-item label="茶园封面">
+            <div @click="showImageSelector = true" style="width: 100%; height: 120px; border: 1px dashed #dcdfe6; border-radius: 4px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative; overflow: hidden;">
+                <img v-if="form.image_path" :src="getPreviewImage(form.image_path)" style="width: 100%; height: 100%; object-fit: cover;" />
+                <div v-else style="color: #909399; display: flex; flex-direction: column; align-items: center;">
+                    <el-icon :size="24"><Picture /></el-icon>
+                    <span style="font-size: 12px; margin-top: 4px;">点击选择封面</span>
+                </div>
+            </div>
+        </el-form-item>
         <el-form-item label="所属公司" prop="company">
           <el-select v-model="form.company" placeholder="请选择" style="width: 100%">
             <el-option label="西湖集团" value="xh" />
@@ -151,6 +160,12 @@
             </span>
         </template>
     </el-dialog>
+
+    <ImageSelector 
+        v-model="showImageSelector" 
+        :current-image="form.image_path"
+        @select="url => form.image_path = url"
+    />
   </div>
 </template>
 
@@ -160,6 +175,8 @@ import { useRouter } from 'vue-router'
 import { getTeaGardenList, createTeaGarden, updateTeaGarden, deleteTeaGarden } from '@/api/tea-garden'
 import { getDeviceList, updateDevice } from '@/api/device'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import ImageSelector from '@/components/ImageSelector.vue'
+
 
 const router = useRouter()
 const queryParams = reactive({ 
@@ -171,6 +188,8 @@ const queryParams = reactive({
 const tableData = ref([])
 const total = ref(0)
 const loading = ref(false)
+const showImageSelector = ref(false)
+
 
 // 新增/编辑相关
 const dialogVisible = ref(false)
@@ -187,6 +206,7 @@ const form = reactive({
   latitude: null,
   longitude: null,
   camera_url: '',
+  image_path: '',
   desc: ''
 })
 
@@ -260,7 +280,9 @@ const handleEdit = (row) => {
   form.area = row.area
   form.latitude = row.latitude
   form.longitude = row.longitude
+  form.longitude = row.longitude
   form.camera_url = row.camera_url
+  form.image_path = row.image_path
   form.desc = row.desc
   dialogVisible.value = true
 }
@@ -274,7 +296,16 @@ const resetForm = () => {
   form.latitude = null
   form.longitude = null
   form.camera_url = ''
+  form.image_path = ''
   form.desc = ''
+}
+
+const getPreviewImage = (path) => {
+    if (!path) return ''
+
+    if (path.startsWith('http')) return path
+    if (path.startsWith('/')) return import.meta.env.VITE_APP_BASE_API + path
+    return path
 }
 
 const handleSubmit = async () => {

@@ -1,0 +1,48 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/alarm/index",
+    "pages/plot/detail",
+    "pages/disease/disease",
+    "pages/chat/chat",
+    "pages/assistant/index",
+    "pages/profile/index",
+    "pages/plot/edit",
+    "pages/plot/index",
+    "pages/plot/edit_garden",
+    "pages/login/index"
+  ],
+  "tabBar": {
+    "color": "#6B7280",
+    "selectedColor": "#10B981",
+    "borderStyle": "white",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "茶园总览",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/alarm/index",
+        "text": "事务中心",
+        "iconPath": "static/tabbar/alarm.png",
+        "selectedIconPath": "static/tabbar/alarm-active.png"
+      },
+      {
+        "pagePath": "pages/assistant/index",
+        "text": "AI助手",
+        "iconPath": "static/tabbar/ai.png",
+        "selectedIconPath": "static/tabbar/ai-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/user.png",
+        "selectedIconPath": "static/tabbar/user-active.png"
+      }
+    ]
+  },
+  "usingComponents": {}
+}

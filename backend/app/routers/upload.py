@@ -15,7 +15,7 @@ Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 @router.post("")
 async def upload_file(file: UploadFile = File(...)):
     """
-    上传文件
+    涓婁紶鏂囦欢
     Upload file
     """
     try:

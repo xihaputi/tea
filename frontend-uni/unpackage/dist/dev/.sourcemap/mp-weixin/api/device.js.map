@@ -1,0 +1,1 @@
+{"version":3,"file":"device.js","sources":["api/device.js"],"sourcesContent":["import { api } from '@/common/http.js';\r\n\r\n// ��ȡ�豸����ң������\r\nexport function getLatestTelemetry(deviceId) {\r\n    return api.get(`/devices/${deviceId}/telemetry`);\r\n}\r\n"],"names":["api"],"mappings":";;AAGO,SAAS,mBAAmB,UAAU;AACzC,SAAOA,YAAAA,IAAI,IAAI,YAAY,QAAQ,YAAY;AACnD;;"}

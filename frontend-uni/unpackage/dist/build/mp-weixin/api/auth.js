@@ -1,0 +1,1 @@
+"use strict";const t=require("../common/http.js");exports.getUserInfo=function(){return t.api.get("/auth/user/info")},exports.login=function(o){return t.api.post("/auth/login",o)},exports.logout=function(){return t.api.post("/auth/logout")};

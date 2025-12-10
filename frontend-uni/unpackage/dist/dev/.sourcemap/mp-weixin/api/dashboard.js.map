@@ -1,0 +1,1 @@
+{"version":3,"file":"dashboard.js","sources":["api/dashboard.js"],"sourcesContent":["import { api } from '@/common/http.js';\r\n\r\nexport function getDashboardStats() {\r\n    return api.get('/dashboard/stats');\r\n}\r\n"],"names":["api"],"mappings":";;AAEO,SAAS,oBAAoB;AAChC,SAAOA,YAAG,IAAC,IAAI,kBAAkB;AACrC;;"}

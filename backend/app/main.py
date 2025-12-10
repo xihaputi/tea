@@ -24,7 +24,9 @@ from .routers import (
     devices,
     devices,
     rules,
-    emqx
+    rules,
+    emqx,
+    weather
 )
 
 # 创建数据库表
@@ -155,6 +157,9 @@ from .routers import dashboard
 app.include_router(dashboard.router)   # 仪表盘 / Dashboard
 from .routers import tasks
 app.include_router(tasks.router)       # 计划任务 / Scheduled Tasks
+from .routers import upload
+app.include_router(upload.router)      # 文件上传 / File Upload
+app.include_router(weather.router)     # 天气服务 / Weather Service
 
 @app.get("/")
 def root():

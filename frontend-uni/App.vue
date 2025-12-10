@@ -1,6 +1,6 @@
 <script>
 export default {
-  onLaunch() {
+    onLaunch() {
     console.log('App Launch');
     // Check login status
     const token = uni.getStorageSync('token');
@@ -13,6 +13,20 @@ export default {
   },
   onShow() {
     console.log('App Show');
+    // Prefetch default weather on app open (silently caching it)
+    // Only if logged in (token exists)
+    const token = uni.getStorageSync('token');
+    if (token) {
+        // Dynamic import to avoid circular dependency issues at top level if any, 
+        // though typically fine. But let's just use require or import at top if possible.
+        // For simple Vue 2/3 in UniApp, standard import at top is better.
+        // But here we are inside the object, let's use the API if imported.
+        // We will add import at the top.
+        // prefetch 'ÐÅÑô'
+        import('@/api/weather.js').then(({ getWeather }) => {
+            getWeather('ÐÅÑô').catch(e => console.log('Prefetch failed', e));
+        });
+    }
   },
   onHide() {
     console.log('App Hide');

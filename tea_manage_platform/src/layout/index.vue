@@ -2,8 +2,8 @@
   <el-container class="h-screen">
     <el-aside :width="asideWidth" class="glass-aside transition-all duration-300">
       <div class="logo-area">
-        <el-icon color="#13c2c2" size="24" class="mr-2"><Leaf /></el-icon>
-        <span class="font-bold text-lg" v-show="!isCollapse">Tea Brain</span>
+        <img src="@/assets/logo.jpg" alt="Logo" class="w-8 h-8 mr-2 rounded" />
+        <span class="font-bold text-lg" v-show="!isCollapse">茶智云</span>
       </div>
       <el-menu
         router
@@ -479,4 +479,7 @@ onUnmounted(() => {
 :global(.dark) .notification-title {
   color: #e5eaf3;
 }
+.w-8 { width: 32px; }
+.h-8 { height: 32px; }
+.rounded { border-radius: 6px; }
 </style>

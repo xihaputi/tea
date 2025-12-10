@@ -1,0 +1,1 @@
+{"version":3,"file":"rule.js","sources":["api/rule.js"],"sourcesContent":["import { api } from '@/common/http.js';\r\n\r\nexport function getSensorRules() {\r\n    return api.get('/rules/sensor');\r\n}\r\n"],"names":["api"],"mappings":";;AAEO,SAAS,iBAAiB;AAC7B,SAAOA,YAAG,IAAC,IAAI,eAAe;AAClC;;"}

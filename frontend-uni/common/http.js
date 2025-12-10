@@ -1,4 +1,4 @@
-const BASE_URL = process.env.UNI_APP_API_BASE || 'http://localhost:8000';
+const BASE_URL = 'http://127.0.0.1:8000';
 
 const request = (method, url, data = {}) =>
   new Promise((resolve, reject) => {
@@ -18,7 +18,7 @@ const request = (method, url, data = {}) =>
           resolve(res.data);
         } else if (res.statusCode === 401) {
           uni.removeStorageSync('token');
-          uni.showToast({ title: 'ÇëÏÈµÇÂ¼', icon: 'none' });
+          uni.showToast({ title: '????', icon: 'none' });
           reject(res);
         } else {
           reject(res);
@@ -60,4 +60,3 @@ export const api = {
   delete: (url, data) => request('DELETE', url, data),
   upload,
 };
-

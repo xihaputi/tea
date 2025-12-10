@@ -67,7 +67,7 @@
                 <text>加载中...</text>
             </view>
             <view class="empty" v-if="!loading && alarms.length === 0">
-                <image src="/static/empty.png" mode="aspectFit" class="empty-icon" />
+
                 <text>暂无告警信息</text>
             </view>
         </template>
@@ -109,7 +109,7 @@
                 <text>加载中...</text>
             </view>
             <view class="empty" v-if="!loading && tasks.length === 0">
-                <image src="/static/empty.png" mode="aspectFit" class="empty-icon" />
+
                 <text>暂无待办任务</text>
             </view>
         </template>

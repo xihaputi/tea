@@ -135,6 +135,7 @@
 import { getGardenDetail, getGardenDevices } from '@/api/garden.js';
 import { getLatestTelemetry } from '@/api/device.js';
 import { getSensorRules } from '@/api/rule.js';
+import { getWeather } from '@/api/weather.js';
 
 export default {
   data() {
@@ -148,10 +149,10 @@ export default {
       
       // 模拟天气数据 (因为没有真实API)
       weather: {
-          temperature: '24',
-          weather: '多云',
-          humidity: '65',
-          windPower: '2'
+          temperature: '--',
+          weather: 'Loading...',
+          humidity: '--',
+          windPower: '-'
       },
       
       sensorList: [],
@@ -202,6 +203,12 @@ export default {
         
         // 2. 获取传感器数据
         await this.fetchSensorData(devices);
+
+        // 3. 获取实时天气 (Async, Non-blocking)
+        const locationQuery = garden.address || garden.name || '信阳';
+        getWeather(locationQuery).then(res => {
+            if (res) this.weather = res;
+        }).catch(e => console.error('Plot weather load failed', e));
         
       } catch (e) {
         console.error(e);
@@ -298,7 +305,13 @@ export default {
         
         await Promise.all(promises);
         this.sensorList = allSensors;
-        this.lastUpdated = new Date().toLocaleTimeString();
+        // Manual format Update Time
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        this.lastUpdated = `${hh}:${mm}:${ss}`;
+        
         this.generateAiAdvice(allSensors);
     },
     
@@ -356,7 +369,14 @@ export default {
     },
     formatTime(time) {
       if (!time) return '-';
-      return new Date(time).toLocaleString();
+      const date = new Date(time);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      const ss = String(date.getSeconds()).padStart(2, '0');
+      return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
     },
     goDeviceDetail(id) {
       uni.showToast({ title: '设备详情开发中', icon: 'none' });
